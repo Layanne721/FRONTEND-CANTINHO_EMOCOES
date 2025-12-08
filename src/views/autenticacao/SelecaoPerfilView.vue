@@ -1,6 +1,6 @@
 <script setup>
 import { ref, onMounted } from 'vue';
-import axios from 'axios';
+import api from '@/services/api'; // <--- IMPORTAÇÃO
 import { useRouter } from 'vue-router';
 import { useAuthStore } from '@/stores/auth';
 import PinModal from '@/components/PinModal.vue';
@@ -10,13 +10,6 @@ const router = useRouter();
 const authStore = useAuthStore();
 const dependentes = ref([]);
 const loading = ref(true);
-
-// --- CONFIGURAÇÃO INTELIGENTE DA URL ---
-// Se o navegador estiver acessando pelo Render, usa o Backend do Render.
-// Caso contrário (no seu computador), usa o Localhost.
-const API_URL = window.location.hostname.includes('render') 
-  ? 'https://backend-cantinho-emocoes.onrender.com' 
-  : 'http://localhost:8080';
 
 // Modais e Estados
 const showPinModal = ref(false);
@@ -35,10 +28,8 @@ onMounted(async () => {
 
 async function carregarDependentes() {
   try {
-    // Usa a URL inteligente aqui
-    const response = await axios.get(`${API_URL}/api/responsavel/dependentes`, {
-      headers: { Authorization: `Bearer ${authStore.token}` }
-    });
+    // Token enviado automaticamente pelo interceptor
+    const response = await api.get('/api/responsavel/dependentes');
     dependentes.value = response.data;
   } catch (e) { 
     console.error("Erro ao carregar dependentes:", e); 
@@ -77,10 +68,7 @@ async function onPinSuccess() {
   else if (pinAction.value === 'DELETE_CHILD' && alunoParaExcluir.value) {
       if(confirm(`Tem certeza que deseja excluir o aluno ${alunoParaExcluir.value.nome}? Todo o histórico será apagado.`)) {
           try {
-              // Usa a URL inteligente aqui
-              await axios.delete(`${API_URL}/api/responsavel/dependentes/${alunoParaExcluir.value.id}`, {
-                  headers: { Authorization: `Bearer ${authStore.token}` }
-              });
+              await api.delete(`/api/responsavel/dependentes/${alunoParaExcluir.value.id}`);
               await carregarDependentes();
               alert("Aluno removido.");
           } catch(e) {
@@ -98,12 +86,11 @@ async function salvarNovoAluno() {
 
   try {
     const ano = new Date().getFullYear() - novoAluno.value.idade;
-    // Usa a URL inteligente aqui
-    await axios.post(`${API_URL}/api/responsavel/dependentes`, {
+    await api.post('/api/responsavel/dependentes', {
       nome: novoAluno.value.nome,
       dataNascimento: `${ano}-01-01`,
       avatarUrl: novoAluno.value.avatar
-    }, { headers: { Authorization: `Bearer ${authStore.token}` } });
+    });
     
     showAddChildModal.value = false;
     await carregarDependentes();

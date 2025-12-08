@@ -1,6 +1,6 @@
 <script setup>
 import { ref } from 'vue';
-import axios from 'axios';
+import api from '@/services/api'; // <--- IMPORTAÇÃO
 
 const email = ref('');
 const mensagem = ref(null);
@@ -9,8 +9,14 @@ const isSubmitting = ref(false);
 
 async function solicitar() {
   mensagem.value = null; erro.value = null; isSubmitting.value = true;
-  try { await axios.post('http://localhost:8080/auth/recuperar-senha', { email: email.value }); mensagem.value = `Link enviado (se o e-mail existir)!`; } 
-  catch (e) { erro.value = "Erro ao processar."; } finally { isSubmitting.value = false; }
+  try { 
+    await api.post('/auth/recuperar-senha', { email: email.value }); 
+    mensagem.value = `Link enviado (se o e-mail existir)!`; 
+  } catch (e) { 
+    erro.value = "Erro ao processar."; 
+  } finally { 
+    isSubmitting.value = false; 
+  }
 }
 </script>
 

@@ -1,7 +1,7 @@
 <script setup>
 import { ref, onMounted, onUnmounted, nextTick } from 'vue';
 import { useRouter, useRoute } from 'vue-router'; 
-import axios from 'axios';
+import api from '@/services/api'; // <--- IMPORTAÇÃO NOVA
 import { useAuthStore } from '@/stores/auth';
 
 const router = useRouter();
@@ -19,7 +19,6 @@ const tamanhoPincel = ref(5);
 const ferramentaAtual = ref('pincel');
 
 // --- ATIVIDADE (A BASE) ---
-// Pega o conteúdo da URL (ex: ?conteudo=A&tipo=VOGAL) ou usa vazio se for livre
 const conteudoBase = ref(route.query.conteudo || ''); 
 const tipoAtividade = ref(route.query.tipo || 'LIVRE');
 
@@ -63,39 +62,32 @@ function inicializarCanvas() {
   ctx.value.fillStyle = '#FFFFFF';
   ctx.value.fillRect(0, 0, canvas.width, canvas.height);
   
-  // --- AQUI ESTÁ A MÁGICA DA BASE ---
   desenharGuia();
-  
   configurarEstilo();
 }
 
-// Função para desenhar a Letra/Número de fundo (Guia)
 function desenharGuia() {
     if (!conteudoBase.value || !ctx.value) return;
 
     const canvas = canvasRef.value;
     const texto = conteudoBase.value.toUpperCase();
 
-    ctx.value.save(); // Salva o estado atual
+    ctx.value.save(); 
     
-    // Configura a fonte da Guia
-    // Ajusta o tamanho da fonte dinamicamente baseado na altura da tela
     const tamanhoFonte = Math.min(canvas.width, canvas.height) * 0.6; 
     ctx.value.font = `900 ${tamanhoFonte}px Nunito, sans-serif`;
-    ctx.value.fillStyle = '#E5E7EB'; // Cinza bem clarinho (marca d'água)
+    ctx.value.fillStyle = '#E5E7EB'; 
     ctx.value.textAlign = 'center';
     ctx.value.textBaseline = 'middle';
     
-    // Desenha no centro
     ctx.value.fillText(texto, canvas.width / 2, canvas.height / 2);
     
-    // Opcional: Desenha uma borda tracejada na letra para facilitar
     ctx.value.strokeStyle = '#D1D5DB';
     ctx.value.lineWidth = 2;
     ctx.value.setLineDash([10, 10]);
     ctx.value.strokeText(texto, canvas.width / 2, canvas.height / 2);
 
-    ctx.value.restore(); // Restaura para não afetar o pincel do aluno
+    ctx.value.restore(); 
 }
 
 function redimensionarCanvas() {
@@ -111,7 +103,6 @@ function redimensionarCanvas() {
     ctx.value.fillStyle = '#FFFFFF';
     ctx.value.fillRect(0, 0, canvas.width, canvas.height);
     
-    // Redesenha a guia antes de colocar o desenho do aluno de volta
     desenharGuia(); 
     
     ctx.value.putImageData(tempImage, 0, 0);
@@ -127,11 +118,9 @@ function configurarEstilo() {
     ctx.value.strokeStyle = corAtual.value;
   }
   ctx.value.lineWidth = tamanhoPincel.value;
-  // Remove o tracejado caso tenha sobrado da guia
   ctx.value.setLineDash([]); 
 }
 
-// Lógica de Desenho
 function getCoordenadas(event) {
   const canvas = canvasRef.value;
   const rect = canvas.getBoundingClientRect();
@@ -170,7 +159,6 @@ function pararDesenho(event) {
   ctx.value.closePath();
 }
 
-// Ferramentas
 function selecionarCor(cor) {
   ferramentaAtual.value = 'pincel';
   corAtual.value = cor;
@@ -191,14 +179,11 @@ function limparTela(confirmar = true) {
   if (confirmar && !confirm('Começar de novo?')) return;
   const canvas = canvasRef.value;
   
-  // Limpa tudo (pinta de branco)
   ctx.value.fillStyle = '#FFFFFF';
   ctx.value.fillRect(0, 0, canvas.width, canvas.height);
   
-  // Redesenha a base (letra/número) para o aluno não perder a referência
   desenharGuia();
-  
-  configurarEstilo(); // Garante que a cor do pincel volte
+  configurarEstilo(); 
 }
 
 // --- SALVAR NO BACKEND ---
@@ -208,20 +193,18 @@ async function salvarDesenho() {
   const imagemBase64 = canvas.toDataURL('image/png');
 
   try {
-    // Agora salvamos na rota de ATIVIDADES para aparecer no painel do Professor
-    await axios.post('http://localhost:8080/api/atividades', {
+    // --- AUTOMATIZADO: Usa 'api' em vez de 'axios' ---
+    await api.post('/api/atividades', {
       tipo: tipoAtividade.value,
       conteudo: conteudoBase.value,
       desenhoBase64: imagemBase64
     }, {
       headers: { 
-        'Authorization': `Bearer ${authStore.token}`,
+        // Não precisa passar Authorization, o api.js já manda!
         'x-child-id': authStore.criancaSelecionada?.id
       }
     });
 
-    // --- CORREÇÃO SOLICITADA ---
-    // Verifica se é uma atividade (conteudoBase tem valor, ex: "A", "1") ou desenho livre
     if (conteudoBase.value) {
         alert(`Parabéns! Você completou a atividade da letra "${conteudoBase.value}"! ⭐`);
     } else {

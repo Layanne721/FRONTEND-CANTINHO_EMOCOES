@@ -1,6 +1,6 @@
 <script setup>
 import { ref, onMounted, computed, watch } from 'vue';
-import axios from 'axios';
+import api from '@/services/api'; // <--- IMPORTAÇÃO CENTRALIZADA
 import { useRouter } from 'vue-router';
 import { useAuthStore } from '@/stores/auth';
 import { Line, Bar } from 'vue-chartjs';
@@ -11,11 +11,7 @@ ChartJS.register(Title, Tooltip, Legend, LineElement, PointElement, CategoryScal
 const router = useRouter();
 const authStore = useAuthStore();
 
-// --- CONFIGURAÇÃO DA API (Local e Render) ---
-// Adicionado para corrigir o erro de conexão no Render
-const API_URL = window.location.hostname.includes('render') 
-  ? 'https://backend-cantinho-emocoes.onrender.com' 
-  : 'http://localhost:8080';
+// (API_URL removida pois o api.js gerencia isso)
 
 // --- MAPA DE EMOÇÕES E VALORES PARA O GRÁFICO ---
 const emotionValueMap = {
@@ -190,30 +186,21 @@ const questoesFiltradas = computed(() => {
 // --- FUNÇÕES DE CARREGAMENTO ---
 async function carregarAlunos() {
   try {
-    // CORRIGIDO: URL dinâmica
-    const response = await axios.get(`${API_URL}/api/responsavel/dependentes`, {
-      headers: { Authorization: `Bearer ${authStore.token}` }
-    });
+    const response = await api.get('/api/responsavel/dependentes');
     dependentes.value = response.data;
   } catch (e) { console.error(e); }
 }
 
 async function carregarTemplatesAvaliacao() {
     try {
-        // CORRIGIDO: URL dinâmica
-        const res = await axios.get(`${API_URL}/api/avaliacoes/templates`, {
-            headers: { Authorization: `Bearer ${authStore.token}` }
-        });
+        const res = await api.get('/api/avaliacoes/templates');
         templatesAvaliacao.value = res.data;
     } catch (e) { console.error(e); }
 }
 
 async function buscarTotalAtividadesEnviadas() {
     try {
-        // CORRIGIDO: URL dinâmica
-        const res = await axios.get(`${API_URL}/api/atividades/total-enviadas`, {
-             headers: { Authorization: `Bearer ${authStore.token}` }
-        });
+        const res = await api.get('/api/atividades/total-enviadas');
         totalAtividadesEnviadasPeloProfessor.value = res.data.total || 0;
     } catch (e) {
         totalAtividadesEnviadasPeloProfessor.value = 0;
@@ -241,7 +228,6 @@ function adicionarObjetivo() {
     const textoQuestao = templatesAvaliacao.value[objetivoTempCategoria.value].questoes[objetivoTempDescricao.value];
     const tituloCategoria = templatesAvaliacao.value[objetivoTempCategoria.value].titulo.split('(')[0].trim(); 
 
-    // --- CORREÇÃO: VERIFICAÇÃO DE DUPLICATA NA SEMANA INTEIRA ---
     // Verifica se este objetivo (ID ou Descrição) já existe em QUALQUER dia da semana
     const jaExisteNaSemana = formSemanario.value.objetivos.some(o => 
         o.categoria === objetivoTempCategoria.value && 
@@ -278,10 +264,7 @@ function getObjetivosPorDia(dia) {
 
 async function carregarSemanario() {
     try {
-        // CORRIGIDO: URL dinâmica
-        const res = await axios.get(`${API_URL}/api/semanario/atual`, {
-            headers: { Authorization: `Bearer ${authStore.token}` }
-        });
+        const res = await api.get('/api/semanario/atual');
         if(res.data) {
             formSemanario.value = {
                 segunda: res.data.segunda || '',
@@ -303,10 +286,7 @@ async function salvarSemanario() {
             objetivos: JSON.stringify(formSemanario.value.objetivos)
         };
 
-        // CORRIGIDO: URL dinâmica
-        await axios.post(`${API_URL}/api/semanario`, payload, {
-            headers: { Authorization: `Bearer ${authStore.token}` }
-        });
+        await api.post('/api/semanario', payload);
         alert('Planejamento salvo com sucesso!');
     } catch (e) {
         alert('Erro ao salvar semanário.');
@@ -321,16 +301,13 @@ async function salvarDiarioProfessor() {
     
     salvandoDiario.value = true;
     try {
-        // CORRIGIDO: URL dinâmica
-        await axios.post(`${API_URL}/api/diario`, {
+        // Envia o x-child-id manualmente no header, pois este diário é do aluno selecionado
+        await api.post('/api/diario', {
             emocao: novoDiario.value.emocao,
             intensidade: novoDiario.value.intensidade,
             relato: novoDiario.value.relato
         }, {
-            headers: { 
-                Authorization: `Bearer ${authStore.token}`,
-                'x-child-id': alunoSelecionado.value.id
-            }
+            headers: { 'x-child-id': alunoSelecionado.value.id }
         });
         
         alert('Registro emocional salvo com sucesso!');
@@ -351,10 +328,10 @@ async function carregarDadosGeraisTurma() {
     try {
         const promises = dependentes.value.map(async (aluno) => {
             try {
-                // CORRIGIDO: URL dinâmica
-                const ativRes = await axios.get(`${API_URL}/api/atividades/aluno/${aluno.id}`, {
-                    headers: { Authorization: `Bearer ${authStore.token}` }
-                });
+                // Busca atividades específicas do aluno
+                // Nota: token vai automático, não precisa passar
+                const ativRes = await api.get(`/api/atividades/aluno/${aluno.id}`);
+                
                 const atividadesGuiadas = ativRes.data.filter(a => a.tipo !== 'LIVRE');
                 const entregues = atividadesGuiadas.length;
                 const pendentes = Math.max(0, totalAtividadesEnviadasPeloProfessor.value - entregues);
@@ -380,12 +357,10 @@ async function carregarDadosGeraisTurma() {
 async function carregarDadosAluno(id) {
     carregandoDados.value = true;
     try {
-        // CORRIGIDO: URL dinâmica
-        const dashRes = await axios.get(`${API_URL}/api/responsavel/dependentes/${id}/dashboard`, { headers: { Authorization: `Bearer ${authStore.token}` } });
+        const dashRes = await api.get(`/api/responsavel/dependentes/${id}/dashboard`);
         dadosDashboard.value = dashRes.data;
         
-        // CORRIGIDO: URL dinâmica
-        const ativRes = await axios.get(`${API_URL}/api/atividades/aluno/${id}`, { headers: { Authorization: `Bearer ${authStore.token}` } });
+        const ativRes = await api.get(`/api/atividades/aluno/${id}`);
         listaAtividades.value = ativRes.data;
         
         // Não forçamos o carregamento da avaliação aqui para não sobrescrever dados não salvos se a aba não estiver ativa
@@ -415,16 +390,10 @@ async function salvarAluno() {
         };
 
         if (modoEdicao.value && alunoEmEdicao.value) {
-            // CORRIGIDO: URL dinâmica
-            await axios.put(`${API_URL}/api/responsavel/dependentes/${alunoEmEdicao.value.id}`, payload, {
-                headers: { Authorization: `Bearer ${authStore.token}` }
-            });
+            await api.put(`/api/responsavel/dependentes/${alunoEmEdicao.value.id}`, payload);
             alert("Aluno atualizado!");
         } else {
-            // CORRIGIDO: URL dinâmica
-            await axios.post(`${API_URL}/api/responsavel/dependentes`, payload, {
-                headers: { Authorization: `Bearer ${authStore.token}` }
-            });
+            await api.post('/api/responsavel/dependentes', payload);
             alert("Aluno cadastrado!");
         }
         
@@ -442,10 +411,7 @@ async function salvarAluno() {
 async function excluirAluno(id) {
     if(!confirm("Tem certeza? O histórico será apagado.")) return;
     try {
-        // CORRIGIDO: URL dinâmica
-        await axios.delete(`${API_URL}/api/responsavel/dependentes/${id}`, {
-            headers: { Authorization: `Bearer ${authStore.token}` }
-        });
+        await api.delete(`/api/responsavel/dependentes/${id}`);
         await carregarAlunos();
         if(alunoSelecionado.value && alunoSelecionado.value.id === id) {
             verVisaoGeral();
@@ -591,15 +557,13 @@ async function buscarAvaliacaoSalva(force = true) {
 
     carregandoFicha.value = true;
     try {
-        // CORRIGIDO: URL dinâmica
-        const res = await axios.get(`${API_URL}/api/avaliacoes/buscar`, {
+        const res = await api.get('/api/avaliacoes/buscar', {
             params: { tipo: subTabAvaliacao.value, unidade: unidadeSelecionada.value },
-            headers: { Authorization: `Bearer ${authStore.token}`, 'x-child-id': alunoSelecionado.value.id }
+            headers: { 'x-child-id': alunoSelecionado.value.id }
         });
         if (res.data && res.data.respostas) {
             formAvaliacao.value = res.data.respostas;
         } else if (force) {
-            // Só zera se for forçado (troca de aluno/tipo), senão mantém o que tem
             formAvaliacao.value = {}; 
         }
     } catch (e) { console.error("Erro ao buscar ficha", e); } finally { carregandoFicha.value = false; }
@@ -608,10 +572,9 @@ async function buscarAvaliacaoSalva(force = true) {
 async function salvarAvaliacao() {
     salvandoAvaliacao.value = true;
     try {
-        // CORRIGIDO: URL dinâmica
-        await axios.post(`${API_URL}/api/avaliacoes`, {
+        await api.post('/api/avaliacoes', {
             tipo: subTabAvaliacao.value, unidade: unidadeSelecionada.value, respostas: formAvaliacao.value
-        }, { headers: { Authorization: `Bearer ${authStore.token}`, 'x-child-id': alunoSelecionado.value.id } });
+        }, { headers: { 'x-child-id': alunoSelecionado.value.id } });
         alert('Avaliação salva!');
     } catch(e) { alert('Erro ao salvar'); } finally { salvandoAvaliacao.value = false; }
 }
@@ -662,8 +625,7 @@ async function enviarAtividade() {
     
     enviandoAtividade.value = true;
     try {
-        // CORRIGIDO: URL dinâmica
-        await axios.post(`${API_URL}/api/atividades/definir-tarefa`, { tipo: novaAtividade.value.tipo, conteudo: novaAtividade.value.conteudo || '' }, { headers: { Authorization: `Bearer ${authStore.token}` } });
+        await api.post('/api/atividades/definir-tarefa', { tipo: novaAtividade.value.tipo, conteudo: novaAtividade.value.conteudo || '' });
         
         alert(`Atividade enviada para ${alunosSelecionadosParaEnvio.value.length} alunos!`);
         totalAtividadesEnviadasPeloProfessor.value++; 
@@ -679,8 +641,6 @@ function formatarData(data) { return new Date(data).toLocaleString('pt-BR'); }
 // Watchers
 watch([subTabAvaliacao, abaAlunoAtual], async () => {
     if (alunoSelecionado.value && abaAlunoAtual.value === 'avaliacao') {
-        // Passa false para não sobrescrever se o usuário estiver apenas trocando sub-abas e não salvou ainda
-        // A busca real acontece na primeira carga ou se o form estiver vazio
         const deveForcar = Object.keys(formAvaliacao.value).length === 0;
         await buscarAvaliacaoSalva(deveForcar);
     }

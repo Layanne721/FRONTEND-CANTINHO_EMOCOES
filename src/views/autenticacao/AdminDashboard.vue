@@ -1,6 +1,6 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue';
-import axios from 'axios';
+import api from '@/services/api'; // <--- IMPORTAÇÃO
 import { useRouter } from 'vue-router';
 import { useAuthStore } from '@/stores/auth';
 
@@ -12,15 +12,6 @@ const loading = ref(true);
 const erro = ref(null);
 const deletandoId = ref(null);
 const termoPesquisa = ref('');
-
-// --- CONFIGURAÇÃO INTELIGENTE DA URL ---
-const API_URL = window.location.hostname.includes('render') 
-  ? 'https://backend-cantinho-emocoes.onrender.com' 
-  : 'http://localhost:8080';
-
-const getHeaders = () => ({
-  headers: { 'Authorization': `Bearer ${authStore.token}` }
-});
 
 onMounted(async () => {
   if (authStore.user?.perfil !== 'ADMINISTRADOR') {
@@ -34,8 +25,8 @@ async function carregarUsuarios() {
   loading.value = true;
   erro.value = null;
   try {
-    // Usa a URL inteligente
-    const response = await axios.get(`${API_URL}/api/admin/usuarios`, getHeaders());
+    // Interceptor injeta o token automaticamente
+    const response = await api.get('/api/admin/usuarios');
     usuarios.value = response.data;
   } catch (e) {
     erro.value = "Erro ao carregar lista.";
@@ -71,8 +62,7 @@ async function excluirUsuario(usuario) {
   deletandoId.value = usuario.id;
 
   try {
-    // Usa a URL inteligente
-    await axios.delete(`${API_URL}/api/admin/usuarios/${usuario.id}`, getHeaders());
+    await api.delete(`/api/admin/usuarios/${usuario.id}`);
     
     usuarios.value = usuarios.value.filter(u => u.id !== usuario.id);
     alert("Usuário e alunos excluídos com sucesso.");

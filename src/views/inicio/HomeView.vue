@@ -1,17 +1,14 @@
 <script setup>
 import { computed, ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
-import axios from 'axios';
+import api from '@/services/api'; // <--- IMPORTAÇÃO CENTRALIZADA
 import { useAuthStore } from '@/stores/auth';
 import AvatarSelectorModal from '@/components/AvatarSelectorModal.vue';
 
 const router = useRouter();
 const authStore = useAuthStore();
 
-// --- CONFIGURAÇÃO DA API (Local e Render) ---
-const API_URL = window.location.hostname.includes('render') 
-  ? 'https://backend-cantinho-emocoes.onrender.com' 
-  : 'http://localhost:8080';
+// (API_URL removida pois o api.js já gerencia isso automaticamente)
 
 const nome = computed(() => authStore.criancaSelecionada?.nome || authStore.user?.name || 'Amiguinho');
 const avatarAtual = computed(() => authStore.criancaSelecionada?.avatarUrl || authStore.user?.avatarUrl);
@@ -72,10 +69,9 @@ async function carregarDados() {
   const childId = authStore.criancaSelecionada?.id || authStore.user?.id;
   
   try {
-    // 1. Semanário (CORRIGIDO URL)
-    const resSemanario = await axios.get(`${API_URL}/api/semanario/atual`, {
-       headers: { Authorization: `Bearer ${authStore.token}` }
-    });
+    // 1. Semanário
+    // URL limpa, token automático via interceptor
+    const resSemanario = await api.get('/api/semanario/atual');
     semanarioAtual.value = resSemanario.data;
     
     // Parse dos objetivos vindos do backend (String JSON -> Array)
@@ -87,9 +83,10 @@ async function carregarDados() {
         }
     }
 
-    // 2. Pendências (CORRIGIDO URL)
-    const resPendentes = await axios.get(`${API_URL}/api/atividades/pendentes`, {
-       headers: { Authorization: `Bearer ${authStore.token}`, 'x-child-id': childId }
+    // 2. Pendências
+    // Passamos o header específico x-child-id (token já vai automático)
+    const resPendentes = await api.get('/api/atividades/pendentes', {
+       headers: { 'x-child-id': childId }
     });
     atividadesPendentes.value = Array.isArray(resPendentes.data) ? resPendentes.data : [];
 
@@ -141,18 +138,15 @@ function sairTotalmente() { authStore.logout(); }
 
 async function atualizarAvatar(novoAvatar) {
   try {
-    const token = authStore.token;
-    // CORRIGIDO URLS
+    // CORRIGIDO: Uso do api.put com URLs relativas
     if (authStore.criancaSelecionada && authStore.criancaSelecionada.id) {
-        await axios.put(`${API_URL}/api/responsavel/dependentes/${authStore.criancaSelecionada.id}/avatar`, 
-            { avatarUrl: novoAvatar }, 
-            { headers: { Authorization: `Bearer ${token}` } }
+        await api.put(`/api/responsavel/dependentes/${authStore.criancaSelecionada.id}/avatar`, 
+            { avatarUrl: novoAvatar }
         );
         authStore.criancaSelecionada.avatarUrl = novoAvatar;
     } else {
-        await axios.put(`${API_URL}/auth/meu-perfil/avatar`, 
-            { avatarUrl: novoAvatar }, 
-            { headers: { Authorization: `Bearer ${token}` } }
+        await api.put('/auth/meu-perfil/avatar', 
+            { avatarUrl: novoAvatar }
         );
         authStore.user.avatarUrl = novoAvatar;
     }

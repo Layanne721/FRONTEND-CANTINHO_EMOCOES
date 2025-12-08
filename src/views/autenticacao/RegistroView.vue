@@ -1,14 +1,10 @@
 <script setup>
 import { ref } from 'vue';
-import axios from 'axios';
+import api from '@/services/api'; // <--- IMPORTAÇÃO
 import { useRouter } from 'vue-router';
 import AvatarSelectorModal from '@/components/AvatarSelectorModal.vue'; 
 
 const router = useRouter();
-
-// --- CONFIGURAÇÃO DA API ---
-// Se existir a variável de ambiente, usa ela. Se não, usa localhost como fallback.
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
 
 // Estado do Modal de Avatar
 const mostrarSeletorAvatar = ref(false);
@@ -18,7 +14,7 @@ const quemEstaSelecionando = ref(null);
 const aceitouTermos = ref(false);
 const mostrarModalTermos = ref(false);
 
-// Dados do Professor (Antigo Responsável)
+// Dados do Professor
 const nomeProfessor = ref('');
 const email = ref('');
 const senha = ref('');
@@ -30,7 +26,7 @@ const avatarProfessor = ref('https://api.dicebear.com/7.x/micah/svg?seed=Profess
 const mostrarSenha = ref(false);
 const mostrarConfirmar = ref(false);
 
-// Dados dos Alunos (Antigo Filhos)
+// Dados dos Alunos
 const alunos = ref([
   { nome: '', genero: 'M', idade: '', avatar: 'https://api.dicebear.com/7.x/adventurer/svg?seed=Aluno1&backgroundColor=b6e3f4' }
 ]);
@@ -70,13 +66,11 @@ function removerAluno(index) {
 async function registrar() {
   erro.value = null;
 
-  // --- VALIDAÇÃO DOS TERMOS ---
   if (!aceitouTermos.value) {
     erro.value = "Você precisa ler e aceitar os Termos de Uso.";
     return;
   }
 
-  // --- VALIDAÇÃO DE SEGURANÇA (SENHA FORTE) ---
   const temTamanho = senha.value.length >= 8;
   const temMaiuscula = /[A-Z]/.test(senha.value);
   const temNumero = /[0-9]/.test(senha.value);
@@ -97,9 +91,8 @@ async function registrar() {
   isSubmitting.value = true;
   
   try {
-    // 1. Cria Professor (Rota /auth/register cria 'RESPONSAVEL' no banco)
-    // USANDO A VARIÁVEL API_URL AQUI
-    await axios.post(`${API_URL}/auth/register`, {
+    // 1. Cria Professor
+    await api.post('/auth/register', {
       nome: nomeProfessor.value,
       email: email.value,
       senha: senha.value,
@@ -108,20 +101,19 @@ async function registrar() {
     });
     
     // 2. Loga para pegar o token
-    // USANDO A VARIÁVEL API_URL AQUI
-    const loginResponse = await axios.post(`${API_URL}/auth/login`, {
+    const loginResponse = await api.post('/auth/login', {
       email: email.value,
       senha: senha.value
     });
     const token = loginResponse.data.token;
 
-    // 3. Cria Alunos (Rota /api/responsavel/dependentes cria 'CRIANCA' no banco)
+    // 3. Cria Alunos
+    // Usamos um config específico aqui porque o localStorage ainda não foi atualizado
     const config = { headers: { Authorization: `Bearer ${token}` } };
     
     for (const aluno of alunos.value) {
       const anoNascimento = new Date().getFullYear() - aluno.idade;
-      // USANDO A VARIÁVEL API_URL AQUI
-      await axios.post(`${API_URL}/api/responsavel/dependentes`, {
+      await api.post('/api/responsavel/dependentes', {
         nome: aluno.nome,
         dataNascimento: `${anoNascimento}-01-01`,
         avatarUrl: aluno.avatar 

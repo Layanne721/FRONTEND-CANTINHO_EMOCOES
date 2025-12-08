@@ -1,7 +1,7 @@
 <script setup>
 import { ref, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import axios from 'axios';
+import api from '@/services/api'; // <--- IMPORTAÇÃO
 
 const route = useRoute();
 const router = useRouter();
@@ -17,7 +17,7 @@ onMounted(() => {
 
 async function redefinir() {
   try {
-    await axios.post('http://localhost:8080/auth/resetar-senha', {
+    await api.post('/auth/resetar-senha', {
       token: token.value,
       newPassword: novaSenha.value
     });

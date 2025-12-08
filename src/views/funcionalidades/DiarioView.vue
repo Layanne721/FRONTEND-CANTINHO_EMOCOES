@@ -1,6 +1,6 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue';
-import axios from 'axios';
+import api from '@/services/api'; // <--- IMPORTAÇÃO NOVA
 import { useRouter } from 'vue-router';
 import { useAuthStore } from '@/stores/auth';
 
@@ -34,10 +34,12 @@ async function carregarHistorico() {
   loading.value = true;
   try {
     const childId = authStore.criancaSelecionada?.id;
+    // Configura apenas o header extra se necessário, auth vai automático
     const config = {
-      headers: { Authorization: `Bearer ${authStore.token}`, ...(childId && { 'X-Child-Id': childId }) }
+      headers: { ...(childId && { 'X-Child-Id': childId }) }
     };
-    const response = await axios.get('http://localhost:8080/api/diario/meus', config);
+    // URL relativa, o api.js resolve o host
+    const response = await api.get('/api/diario/meus', config);
     historico.value = response.data;
   } catch (e) {
     console.error("Erro ao carregar:", e);
@@ -54,10 +56,10 @@ async function salvarDiario() {
   try {
     const childId = authStore.criancaSelecionada?.id;
     const config = {
-      headers: { Authorization: `Bearer ${authStore.token}`, ...(childId && { 'X-Child-Id': childId }) }
+      headers: { ...(childId && { 'X-Child-Id': childId }) }
     };
 
-    await axios.post('http://localhost:8080/api/diario', {
+    await api.post('/api/diario', {
       emocao: emocaoSelecionada.value,
       intensidade: intensidade.value,
       relato: relato.value

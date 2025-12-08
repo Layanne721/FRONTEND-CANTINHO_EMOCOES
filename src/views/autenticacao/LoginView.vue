@@ -1,15 +1,11 @@
 <script setup>
 import { ref, onMounted } from 'vue';
-import axios from 'axios';
 import { useRouter } from 'vue-router';
+import api from '@/services/api'; // <--- IMPORTAÇÃO CENTRALIZADA
 import { useAuthStore } from '@/stores/auth';
 
 const router = useRouter();
 const authStore = useAuthStore();
-
-// --- CONFIGURAÇÃO DA URL DA API ---
-// Captura a variável do .env (Render) ou usa localhost como padrão
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
 
 const email = ref('');
 const senha = ref('');
@@ -29,8 +25,8 @@ async function checarStatusSistema() {
   erro.value = null;
   
   try {
-    // Verifica a saúde do sistema usando a URL dinâmica
-    await axios.get(`${API_URL}/api/health`);
+    // URL relativa, o api.js resolve o host
+    await api.get('/api/health');
     bancoOnline.value = true;
   } catch (e) {
     if (e.code === 'ERR_NETWORK') {
@@ -53,8 +49,7 @@ async function fazerLogin() {
   isSubmitting.value = true;
   
   try {
-    // Faz o login usando a URL dinâmica
-    const response = await axios.post(`${API_URL}/auth/login`, {
+    const response = await api.post('/auth/login', {
       email: email.value,
       senha: senha.value
     }, {
@@ -203,26 +198,14 @@ async function fazerLogin() {
 <style scoped>
 @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;900&display=swap');
 
-.font-nunito {
-  font-family: 'Nunito', sans-serif;
-}
-
-.label-padrao {
-  @apply block text-gray-500 font-extrabold mb-2 ml-2 text-xs uppercase tracking-wider;
-}
-
-.input-padrao {
-  @apply w-full px-6 py-4 rounded-[20px] bg-[#F9FAFB] border-2 border-transparent focus:bg-white focus:border-[#C084FC] outline-none transition-all text-gray-600 font-bold placeholder-gray-300 shadow-inner;
-}
-
+.font-nunito { font-family: 'Nunito', sans-serif; }
+.label-padrao { @apply block text-gray-500 font-extrabold mb-2 ml-2 text-xs uppercase tracking-wider; }
+.input-padrao { @apply w-full px-6 py-4 rounded-[20px] bg-[#F9FAFB] border-2 border-transparent focus:bg-white focus:border-[#C084FC] outline-none transition-all text-gray-600 font-bold placeholder-gray-300 shadow-inner; }
 @keyframes floatSlow { 0%, 100% { transform: translateY(0px); } 50% { transform: translateY(-15px); } }
 .animate-float-slow { animation: floatSlow 4s ease-in-out infinite; }
-
 @keyframes floatDelayed { 0%, 100% { transform: translateY(0px); } 50% { transform: translateY(-10px); } }
 .animate-float-delayed { animation: floatDelayed 5s ease-in-out infinite; animation-delay: 1s; }
-
 .animate-bounce-slow { animation: floatSlow 3s ease-in-out infinite; }
-
 @keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-5px); } 75% { transform: translateX(5px); } }
 .animate-shake { animation: shake 0.3s ease-in-out; }
 </style>
