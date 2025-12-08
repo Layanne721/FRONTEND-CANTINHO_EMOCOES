@@ -6,6 +6,10 @@ import AvatarSelectorModal from '@/components/AvatarSelectorModal.vue';
 
 const router = useRouter();
 
+// --- CONFIGURAÇÃO DA API ---
+// Se existir a variável de ambiente, usa ela. Se não, usa localhost como fallback.
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
+
 // Estado do Modal de Avatar
 const mostrarSeletorAvatar = ref(false);
 const quemEstaSelecionando = ref(null);
@@ -36,10 +40,6 @@ const isSubmitting = ref(false);
 
 // --- Lógica de Avatar ---
 function abrirSeletor(tipo, index = null) {
-  // Ajuste do tipo interno: PAI vira PROFESSOR, FILHO vira ALUNO
-  // Mas se o componente AvatarSelector esperar 'PAI'/'FILHO', você pode manter strings antigas ou atualizar o componente também.
-  // Vou mandar 'PAI' e 'FILHO' como strings se o componente depender disso, 
-  // mas aqui trataremos logicamente como Professor e Aluno.
   quemEstaSelecionando.value = { tipo, index };
   mostrarSeletorAvatar.value = true;
 }
@@ -98,7 +98,8 @@ async function registrar() {
   
   try {
     // 1. Cria Professor (Rota /auth/register cria 'RESPONSAVEL' no banco)
-    await axios.post('http://localhost:8080/auth/register', {
+    // USANDO A VARIÁVEL API_URL AQUI
+    await axios.post(`${API_URL}/auth/register`, {
       nome: nomeProfessor.value,
       email: email.value,
       senha: senha.value,
@@ -107,7 +108,8 @@ async function registrar() {
     });
     
     // 2. Loga para pegar o token
-    const loginResponse = await axios.post('http://localhost:8080/auth/login', {
+    // USANDO A VARIÁVEL API_URL AQUI
+    const loginResponse = await axios.post(`${API_URL}/auth/login`, {
       email: email.value,
       senha: senha.value
     });
@@ -118,7 +120,8 @@ async function registrar() {
     
     for (const aluno of alunos.value) {
       const anoNascimento = new Date().getFullYear() - aluno.idade;
-      await axios.post('http://localhost:8080/api/responsavel/dependentes', {
+      // USANDO A VARIÁVEL API_URL AQUI
+      await axios.post(`${API_URL}/api/responsavel/dependentes`, {
         nome: aluno.nome,
         dataNascimento: `${anoNascimento}-01-01`,
         avatarUrl: aluno.avatar 

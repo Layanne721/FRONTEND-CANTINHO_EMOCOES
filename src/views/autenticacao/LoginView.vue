@@ -8,9 +8,8 @@ const router = useRouter();
 const authStore = useAuthStore();
 
 // --- CONFIGURAÇÃO DA URL DA API ---
-// Se houver uma variável de ambiente (no Render), usa ela.
-// Se não, usa o localhost (no seu PC).
-const API_URL = import.meta.env.VITE_API_URL;
+// Captura a variável do .env (Render) ou usa localhost como padrão
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
 
 const email = ref('');
 const senha = ref('');
@@ -30,7 +29,7 @@ async function checarStatusSistema() {
   erro.value = null;
   
   try {
-    // Usa a URL dinâmica aqui
+    // Verifica a saúde do sistema usando a URL dinâmica
     await axios.get(`${API_URL}/api/health`);
     bancoOnline.value = true;
   } catch (e) {
@@ -39,7 +38,7 @@ async function checarStatusSistema() {
         bancoOnline.value = false;
         erro.value = "⚠️ Sem conexão com o servidor.";
     } else {
-        // Se responder 404 ou 500, o servidor está vivo, só deu erro na rota
+        // Se responder 403, 404 ou 500, o servidor está vivo
         bancoOnline.value = true;
     }
   } finally {
@@ -54,7 +53,7 @@ async function fazerLogin() {
   isSubmitting.value = true;
   
   try {
-    // Usa a URL dinâmica aqui também
+    // Faz o login usando a URL dinâmica
     const response = await axios.post(`${API_URL}/auth/login`, {
       email: email.value,
       senha: senha.value
@@ -82,7 +81,7 @@ async function fazerLogin() {
       response.data.token
     );
     
-    // Redirecionamento
+    // Redirecionamento baseado no Perfil
     if (response.data.role === 'ADMINISTRADOR') {
         router.push('/admin');
     } else {
