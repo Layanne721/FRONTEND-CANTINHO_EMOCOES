@@ -10,6 +10,12 @@ const pin = ref('');
 const erro = ref(null);
 const loading = ref(false);
 
+// --- CONFIGURAÇÃO INTELIGENTE DA URL ---
+// Detecta se está rodando no Render ou localmente
+const API_URL = window.location.hostname.includes('render') 
+  ? 'https://backend-cantinho-emocoes.onrender.com' 
+  : 'http://localhost:8080';
+
 // --- LÓGICA DO AVISO DE STATUS ---
 const verificandoConexao = ref(true);
 const bancoOnline = ref(false);
@@ -21,8 +27,8 @@ onMounted(async () => {
 async function checarStatusSistema() {
   verificandoConexao.value = true;
   try {
-    // Verifica se o backend está respondendo
-    await axios.get('http://localhost:8080/api/health');
+    // Verifica se o backend está respondendo (usando API_URL dinâmica)
+    await axios.get(`${API_URL}/api/health`);
     bancoOnline.value = true;
   } catch (e) {
     if (e.code === 'ERR_NETWORK') {
@@ -50,7 +56,8 @@ async function validarPin() {
   erro.value = null;
 
   try {
-    const response = await axios.post('http://localhost:8080/api/responsavel/validar-pin', 
+    // Requisição com API_URL dinâmica
+    const response = await axios.post(`${API_URL}/api/responsavel/validar-pin`, 
       { pin: pin.value },
       {
         headers: { Authorization: `Bearer ${authStore.token}` },
@@ -75,18 +82,14 @@ async function validarPin() {
 </script>
 
 <template>
-  <!-- Fundo Gradiente Suave igual ao Login/Home -->
   <div class="fixed inset-0 bg-[#A78BFA]/60 backdrop-blur-md z-[100] flex flex-col items-center justify-center p-4 font-nunito animate-fade-in">
     
-    <!-- Card Principal -->
     <div class="bg-white rounded-[40px] p-10 w-full max-w-md shadow-[0_20px_60px_-15px_rgba(0,0,0,0.1)] border-4 border-white text-center relative transition-all">
       
-      <!-- Botão Fechar -->
       <button @click="$emit('close')" class="absolute top-6 right-6 text-gray-300 hover:text-[#A78BFA] font-bold transition-colors text-xl">
         ✕
       </button>
 
-      <!-- Status do Sistema -->
       <div class="mb-8 flex justify-center">
         <div v-if="verificandoConexao" class="text-[10px] uppercase tracking-wider text-gray-400 font-bold animate-pulse bg-gray-50 px-3 py-1 rounded-full border border-gray-100">
           📡 Verificando...
