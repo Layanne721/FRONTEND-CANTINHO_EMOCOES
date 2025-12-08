@@ -1,6 +1,6 @@
 <script setup>
 import { ref, onMounted } from 'vue';
-import axios from 'axios';
+import api from '@/services/api'; // <--- ALTERAÇÃO: Importa o serviço centralizado
 import { useAuthStore } from '@/stores/auth'; 
 
 const emit = defineEmits(['close', 'success']);
@@ -9,12 +9,6 @@ const authStore = useAuthStore();
 const pin = ref('');
 const erro = ref(null);
 const loading = ref(false);
-
-// --- CONFIGURAÇÃO INTELIGENTE DA URL ---
-// Isso detecta se está no servidor (Render) ou no seu computador (Localhost)
-const API_URL = window.location.hostname.includes('render') 
-  ? 'https://backend-cantinho-emocoes.onrender.com' 
-  : 'http://localhost:8080';
 
 // --- LÓGICA DO AVISO DE STATUS ---
 const verificandoConexao = ref(true);
@@ -27,14 +21,15 @@ onMounted(async () => {
 async function checarStatusSistema() {
   verificandoConexao.value = true;
   try {
-    // Agora usa a URL correta (API_URL) em vez de localhost fixo
-    await axios.get(`${API_URL}/api/health`);
+    // ALTERAÇÃO: Usa api.get e URL relativa
+    await api.get('/api/health');
     bancoOnline.value = true;
   } catch (e) {
-    // Se der erro de rede, assume offline. Outros erros (403, 500) significam que o servidor respondeu.
+    // Se der erro de rede, assume offline.
     if (e.code === 'ERR_NETWORK') {
        bancoOnline.value = false;
     } else {
+       // Se o servidor respondeu (mesmo com erro 4xx/5xx), ele está online
        bancoOnline.value = true; 
     }
   } finally {
@@ -57,11 +52,10 @@ async function validarPin() {
   erro.value = null;
 
   try {
-    // CORREÇÃO: Usa a API_URL dinâmica aqui também
-    const response = await axios.post(`${API_URL}/api/responsavel/validar-pin`, 
+    // ALTERAÇÃO: Usa api.post, URL relativa e remove header de Authorization (automático)
+    const response = await api.post('/api/responsavel/validar-pin', 
       { pin: pin.value },
       {
-        headers: { Authorization: `Bearer ${authStore.token}` },
         validateStatus: (status) => status < 500 
       }
     );
