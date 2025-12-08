@@ -11,6 +11,12 @@ ChartJS.register(Title, Tooltip, Legend, LineElement, PointElement, CategoryScal
 const router = useRouter();
 const authStore = useAuthStore();
 
+// --- CONFIGURAÇÃO DA API (Local e Render) ---
+// Adicionado para corrigir o erro de conexão no Render
+const API_URL = window.location.hostname.includes('render') 
+  ? 'https://backend-cantinho-emocoes.onrender.com' 
+  : 'http://localhost:8080';
+
 // --- MAPA DE EMOÇÕES E VALORES PARA O GRÁFICO ---
 const emotionValueMap = {
   'BRAVO': 1,
@@ -184,7 +190,8 @@ const questoesFiltradas = computed(() => {
 // --- FUNÇÕES DE CARREGAMENTO ---
 async function carregarAlunos() {
   try {
-    const response = await axios.get('http://localhost:8080/api/responsavel/dependentes', {
+    // CORRIGIDO: URL dinâmica
+    const response = await axios.get(`${API_URL}/api/responsavel/dependentes`, {
       headers: { Authorization: `Bearer ${authStore.token}` }
     });
     dependentes.value = response.data;
@@ -193,7 +200,8 @@ async function carregarAlunos() {
 
 async function carregarTemplatesAvaliacao() {
     try {
-        const res = await axios.get('http://localhost:8080/api/avaliacoes/templates', {
+        // CORRIGIDO: URL dinâmica
+        const res = await axios.get(`${API_URL}/api/avaliacoes/templates`, {
             headers: { Authorization: `Bearer ${authStore.token}` }
         });
         templatesAvaliacao.value = res.data;
@@ -202,7 +210,8 @@ async function carregarTemplatesAvaliacao() {
 
 async function buscarTotalAtividadesEnviadas() {
     try {
-        const res = await axios.get('http://localhost:8080/api/atividades/total-enviadas', {
+        // CORRIGIDO: URL dinâmica
+        const res = await axios.get(`${API_URL}/api/atividades/total-enviadas`, {
              headers: { Authorization: `Bearer ${authStore.token}` }
         });
         totalAtividadesEnviadasPeloProfessor.value = res.data.total || 0;
@@ -269,7 +278,8 @@ function getObjetivosPorDia(dia) {
 
 async function carregarSemanario() {
     try {
-        const res = await axios.get('http://localhost:8080/api/semanario/atual', {
+        // CORRIGIDO: URL dinâmica
+        const res = await axios.get(`${API_URL}/api/semanario/atual`, {
             headers: { Authorization: `Bearer ${authStore.token}` }
         });
         if(res.data) {
@@ -293,7 +303,8 @@ async function salvarSemanario() {
             objetivos: JSON.stringify(formSemanario.value.objetivos)
         };
 
-        await axios.post('http://localhost:8080/api/semanario', payload, {
+        // CORRIGIDO: URL dinâmica
+        await axios.post(`${API_URL}/api/semanario`, payload, {
             headers: { Authorization: `Bearer ${authStore.token}` }
         });
         alert('Planejamento salvo com sucesso!');
@@ -310,7 +321,8 @@ async function salvarDiarioProfessor() {
     
     salvandoDiario.value = true;
     try {
-        await axios.post('http://localhost:8080/api/diario', {
+        // CORRIGIDO: URL dinâmica
+        await axios.post(`${API_URL}/api/diario`, {
             emocao: novoDiario.value.emocao,
             intensidade: novoDiario.value.intensidade,
             relato: novoDiario.value.relato
@@ -339,7 +351,8 @@ async function carregarDadosGeraisTurma() {
     try {
         const promises = dependentes.value.map(async (aluno) => {
             try {
-                const ativRes = await axios.get(`http://localhost:8080/api/atividades/aluno/${aluno.id}`, {
+                // CORRIGIDO: URL dinâmica
+                const ativRes = await axios.get(`${API_URL}/api/atividades/aluno/${aluno.id}`, {
                     headers: { Authorization: `Bearer ${authStore.token}` }
                 });
                 const atividadesGuiadas = ativRes.data.filter(a => a.tipo !== 'LIVRE');
@@ -367,10 +380,14 @@ async function carregarDadosGeraisTurma() {
 async function carregarDadosAluno(id) {
     carregandoDados.value = true;
     try {
-        const dashRes = await axios.get(`http://localhost:8080/api/responsavel/dependentes/${id}/dashboard`, { headers: { Authorization: `Bearer ${authStore.token}` } });
+        // CORRIGIDO: URL dinâmica
+        const dashRes = await axios.get(`${API_URL}/api/responsavel/dependentes/${id}/dashboard`, { headers: { Authorization: `Bearer ${authStore.token}` } });
         dadosDashboard.value = dashRes.data;
-        const ativRes = await axios.get(`http://localhost:8080/api/atividades/aluno/${id}`, { headers: { Authorization: `Bearer ${authStore.token}` } });
+        
+        // CORRIGIDO: URL dinâmica
+        const ativRes = await axios.get(`${API_URL}/api/atividades/aluno/${id}`, { headers: { Authorization: `Bearer ${authStore.token}` } });
         listaAtividades.value = ativRes.data;
+        
         // Não forçamos o carregamento da avaliação aqui para não sobrescrever dados não salvos se a aba não estiver ativa
         if(abaAlunoAtual.value === 'avaliacao') {
              await buscarAvaliacaoSalva(false); // false = não sobrescrever se tiver sujeira
@@ -398,12 +415,14 @@ async function salvarAluno() {
         };
 
         if (modoEdicao.value && alunoEmEdicao.value) {
-            await axios.put(`http://localhost:8080/api/responsavel/dependentes/${alunoEmEdicao.value.id}`, payload, {
+            // CORRIGIDO: URL dinâmica
+            await axios.put(`${API_URL}/api/responsavel/dependentes/${alunoEmEdicao.value.id}`, payload, {
                 headers: { Authorization: `Bearer ${authStore.token}` }
             });
             alert("Aluno atualizado!");
         } else {
-            await axios.post('http://localhost:8080/api/responsavel/dependentes', payload, {
+            // CORRIGIDO: URL dinâmica
+            await axios.post(`${API_URL}/api/responsavel/dependentes`, payload, {
                 headers: { Authorization: `Bearer ${authStore.token}` }
             });
             alert("Aluno cadastrado!");
@@ -423,7 +442,8 @@ async function salvarAluno() {
 async function excluirAluno(id) {
     if(!confirm("Tem certeza? O histórico será apagado.")) return;
     try {
-        await axios.delete(`http://localhost:8080/api/responsavel/dependentes/${id}`, {
+        // CORRIGIDO: URL dinâmica
+        await axios.delete(`${API_URL}/api/responsavel/dependentes/${id}`, {
             headers: { Authorization: `Bearer ${authStore.token}` }
         });
         await carregarAlunos();
@@ -571,7 +591,8 @@ async function buscarAvaliacaoSalva(force = true) {
 
     carregandoFicha.value = true;
     try {
-        const res = await axios.get('http://localhost:8080/api/avaliacoes/buscar', {
+        // CORRIGIDO: URL dinâmica
+        const res = await axios.get(`${API_URL}/api/avaliacoes/buscar`, {
             params: { tipo: subTabAvaliacao.value, unidade: unidadeSelecionada.value },
             headers: { Authorization: `Bearer ${authStore.token}`, 'x-child-id': alunoSelecionado.value.id }
         });
@@ -587,7 +608,8 @@ async function buscarAvaliacaoSalva(force = true) {
 async function salvarAvaliacao() {
     salvandoAvaliacao.value = true;
     try {
-        await axios.post('http://localhost:8080/api/avaliacoes', {
+        // CORRIGIDO: URL dinâmica
+        await axios.post(`${API_URL}/api/avaliacoes`, {
             tipo: subTabAvaliacao.value, unidade: unidadeSelecionada.value, respostas: formAvaliacao.value
         }, { headers: { Authorization: `Bearer ${authStore.token}`, 'x-child-id': alunoSelecionado.value.id } });
         alert('Avaliação salva!');
@@ -640,7 +662,8 @@ async function enviarAtividade() {
     
     enviandoAtividade.value = true;
     try {
-        await axios.post('http://localhost:8080/api/atividades/definir-tarefa', { tipo: novaAtividade.value.tipo, conteudo: novaAtividade.value.conteudo || '' }, { headers: { Authorization: `Bearer ${authStore.token}` } });
+        // CORRIGIDO: URL dinâmica
+        await axios.post(`${API_URL}/api/atividades/definir-tarefa`, { tipo: novaAtividade.value.tipo, conteudo: novaAtividade.value.conteudo || '' }, { headers: { Authorization: `Bearer ${authStore.token}` } });
         
         alert(`Atividade enviada para ${alunosSelecionadosParaEnvio.value.length} alunos!`);
         totalAtividadesEnviadasPeloProfessor.value++; 

@@ -8,6 +8,11 @@ import AvatarSelectorModal from '@/components/AvatarSelectorModal.vue';
 const router = useRouter();
 const authStore = useAuthStore();
 
+// --- CONFIGURAÇÃO DA API (Local e Render) ---
+const API_URL = window.location.hostname.includes('render') 
+  ? 'https://backend-cantinho-emocoes.onrender.com' 
+  : 'http://localhost:8080';
+
 const nome = computed(() => authStore.criancaSelecionada?.nome || authStore.user?.name || 'Amiguinho');
 const avatarAtual = computed(() => authStore.criancaSelecionada?.avatarUrl || authStore.user?.avatarUrl);
 
@@ -67,8 +72,8 @@ async function carregarDados() {
   const childId = authStore.criancaSelecionada?.id || authStore.user?.id;
   
   try {
-    // 1. Semanário
-    const resSemanario = await axios.get('http://localhost:8080/api/semanario/atual', {
+    // 1. Semanário (CORRIGIDO URL)
+    const resSemanario = await axios.get(`${API_URL}/api/semanario/atual`, {
        headers: { Authorization: `Bearer ${authStore.token}` }
     });
     semanarioAtual.value = resSemanario.data;
@@ -82,8 +87,8 @@ async function carregarDados() {
         }
     }
 
-    // 2. Pendências e Cálculo da Dica de Rendimento
-    const resPendentes = await axios.get('http://localhost:8080/api/atividades/pendentes', {
+    // 2. Pendências (CORRIGIDO URL)
+    const resPendentes = await axios.get(`${API_URL}/api/atividades/pendentes`, {
        headers: { Authorization: `Bearer ${authStore.token}`, 'x-child-id': childId }
     });
     atividadesPendentes.value = Array.isArray(resPendentes.data) ? resPendentes.data : [];
@@ -137,14 +142,15 @@ function sairTotalmente() { authStore.logout(); }
 async function atualizarAvatar(novoAvatar) {
   try {
     const token = authStore.token;
+    // CORRIGIDO URLS
     if (authStore.criancaSelecionada && authStore.criancaSelecionada.id) {
-        await axios.put(`http://localhost:8080/api/responsavel/dependentes/${authStore.criancaSelecionada.id}/avatar`, 
+        await axios.put(`${API_URL}/api/responsavel/dependentes/${authStore.criancaSelecionada.id}/avatar`, 
             { avatarUrl: novoAvatar }, 
             { headers: { Authorization: `Bearer ${token}` } }
         );
         authStore.criancaSelecionada.avatarUrl = novoAvatar;
     } else {
-        await axios.put('http://localhost:8080/auth/meu-perfil/avatar', 
+        await axios.put(`${API_URL}/auth/meu-perfil/avatar`, 
             { avatarUrl: novoAvatar }, 
             { headers: { Authorization: `Bearer ${token}` } }
         );
