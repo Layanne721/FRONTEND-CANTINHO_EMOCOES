@@ -11,21 +11,22 @@ const authStore = useAuthStore();
 const dependentes = ref([]);
 const loading = ref(true);
 
-// --- CONFIGURAÇÃO DA URL DA API ---
-// Pega do .env (Render) ou usa localhost
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
+// --- CONFIGURAÇÃO INTELIGENTE DA URL ---
+// Se o navegador estiver acessando pelo Render, usa o Backend do Render.
+// Caso contrário (no seu computador), usa o Localhost.
+const API_URL = window.location.hostname.includes('render') 
+  ? 'https://backend-cantinho-emocoes.onrender.com' 
+  : 'http://localhost:8080';
 
 // Modais e Estados
 const showPinModal = ref(false);
 const showAddChildModal = ref(false);
-const pinAction = ref(''); // 'CONFIG', 'ADD_CHILD', 'DELETE_CHILD'
+const pinAction = ref(''); 
 const showAvatarSelector = ref(false);
-const modoGerenciamento = ref(false); // Ativa o modo de excluir
+const modoGerenciamento = ref(false); 
 const alunoParaExcluir = ref(null);
 
-// Trava de segurança para cadastro
 const cadastrando = ref(false);
-
 const novoAluno = ref({ nome: '', idade: '', genero: 'M', avatar: '' });
 
 onMounted(async () => {
@@ -34,20 +35,20 @@ onMounted(async () => {
 
 async function carregarDependentes() {
   try {
-    // CORREÇÃO: Usando API_URL
+    // Usa a URL inteligente aqui
     const response = await axios.get(`${API_URL}/api/responsavel/dependentes`, {
       headers: { Authorization: `Bearer ${authStore.token}` }
     });
     dependentes.value = response.data;
   } catch (e) { 
-    console.error(e); 
+    console.error("Erro ao carregar dependentes:", e); 
   } finally { 
     loading.value = false; 
   }
 }
 
 function selecionarAluno(aluno) {
-  if (modoGerenciamento.value) return; // Não entra se estiver gerenciando
+  if (modoGerenciamento.value) return; 
   authStore.selecionarCrianca(aluno);
   router.push('/home');
 }
@@ -67,7 +68,7 @@ async function onPinSuccess() {
   showPinModal.value = false;
   
   if (pinAction.value === 'CONFIG') {
-    router.push('/responsavel'); // Portal do Professor
+    router.push('/responsavel'); 
   } 
   else if (pinAction.value === 'ADD_CHILD') {
     novoAluno.value = { nome: '', idade: '', genero: 'M', avatar: `https://api.dicebear.com/7.x/adventurer/svg?seed=${Date.now()}` };
@@ -76,7 +77,7 @@ async function onPinSuccess() {
   else if (pinAction.value === 'DELETE_CHILD' && alunoParaExcluir.value) {
       if(confirm(`Tem certeza que deseja excluir o aluno ${alunoParaExcluir.value.nome}? Todo o histórico será apagado.`)) {
           try {
-              // CORREÇÃO: Usando API_URL
+              // Usa a URL inteligente aqui
               await axios.delete(`${API_URL}/api/responsavel/dependentes/${alunoParaExcluir.value.id}`, {
                   headers: { Authorization: `Bearer ${authStore.token}` }
               });
@@ -97,7 +98,7 @@ async function salvarNovoAluno() {
 
   try {
     const ano = new Date().getFullYear() - novoAluno.value.idade;
-    // CORREÇÃO: Usando API_URL
+    // Usa a URL inteligente aqui
     await axios.post(`${API_URL}/api/responsavel/dependentes`, {
       nome: novoAluno.value.nome,
       dataNascimento: `${ano}-01-01`,
@@ -229,7 +230,6 @@ function handleAvatarSelect(url) {
 @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes popIn { from { transform: scale(0); } to { transform: scale(1); } }
 
-/* Animação de tremor para o modo de edição */
 @keyframes shake {
   0% { transform: rotate(0deg); }
   25% { transform: rotate(1deg); }

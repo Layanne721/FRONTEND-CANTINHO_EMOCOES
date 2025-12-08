@@ -7,14 +7,16 @@ import { useAuthStore } from '@/stores/auth';
 const router = useRouter();
 const authStore = useAuthStore();
 
-// --- CONFIGURAÇÃO DA URL DA API ---
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
-
-const usuarios = ref([]); // Lista hierárquica (Professores contêm Alunos)
+const usuarios = ref([]); 
 const loading = ref(true);
 const erro = ref(null);
 const deletandoId = ref(null);
 const termoPesquisa = ref('');
+
+// --- CONFIGURAÇÃO INTELIGENTE DA URL ---
+const API_URL = window.location.hostname.includes('render') 
+  ? 'https://backend-cantinho-emocoes.onrender.com' 
+  : 'http://localhost:8080';
 
 const getHeaders = () => ({
   headers: { 'Authorization': `Bearer ${authStore.token}` }
@@ -32,7 +34,7 @@ async function carregarUsuarios() {
   loading.value = true;
   erro.value = null;
   try {
-    // CORREÇÃO: Usando API_URL
+    // Usa a URL inteligente
     const response = await axios.get(`${API_URL}/api/admin/usuarios`, getHeaders());
     usuarios.value = response.data;
   } catch (e) {
@@ -42,7 +44,6 @@ async function carregarUsuarios() {
   }
 }
 
-// --- FUNÇÃO DE SAIR ---
 function fazerLogout() {
   if (authStore.clearLoginData) {
       authStore.clearLoginData();
@@ -54,13 +55,11 @@ function fazerLogout() {
 }
 
 async function excluirUsuario(usuario) {
-  // 1. Bloqueio Frontend para ADMIN
   if (usuario.perfil === 'ADMINISTRADOR') {
     alert("⛔ Ação Negada: Você não pode excluir contas de Administrador.");
     return;
   }
 
-  // 2. Aviso sobre Cascata (Professor apaga Alunos)
   let mensagem = `⚠️ Tem certeza que deseja excluir o professor(a) ${usuario.nome}?`;
   
   if (usuario.perfil === 'RESPONSAVEL' && usuario.dependentes && usuario.dependentes.length > 0) {
@@ -72,10 +71,9 @@ async function excluirUsuario(usuario) {
   deletandoId.value = usuario.id;
 
   try {
-    // CORREÇÃO: Usando API_URL
+    // Usa a URL inteligente
     await axios.delete(`${API_URL}/api/admin/usuarios/${usuario.id}`, getHeaders());
     
-    // Atualiza a lista removendo o item excluído
     usuarios.value = usuarios.value.filter(u => u.id !== usuario.id);
     alert("Usuário e alunos excluídos com sucesso.");
   } catch (e) {
@@ -86,7 +84,6 @@ async function excluirUsuario(usuario) {
   }
 }
 
-// Filtro simples
 const usuariosFiltrados = computed(() => {
   if (!termoPesquisa.value) return usuarios.value;
   const termo = termoPesquisa.value.toLowerCase();
@@ -97,7 +94,6 @@ const usuariosFiltrados = computed(() => {
   );
 });
 
-// Estatísticas (Adaptadas para Professor/Aluno)
 const stats = computed(() => {
   let totalProfessores = 0;
   let totalAlunos = 0;
