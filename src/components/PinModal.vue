@@ -11,7 +11,7 @@ const erro = ref(null);
 const loading = ref(false);
 
 // --- CONFIGURAÇÃO INTELIGENTE DA URL ---
-// Detecta se está rodando no Render ou localmente
+// Isso detecta se está no servidor (Render) ou no seu computador (Localhost)
 const API_URL = window.location.hostname.includes('render') 
   ? 'https://backend-cantinho-emocoes.onrender.com' 
   : 'http://localhost:8080';
@@ -27,10 +27,11 @@ onMounted(async () => {
 async function checarStatusSistema() {
   verificandoConexao.value = true;
   try {
-    // Verifica se o backend está respondendo (usando API_URL dinâmica)
+    // Agora usa a URL correta (API_URL) em vez de localhost fixo
     await axios.get(`${API_URL}/api/health`);
     bancoOnline.value = true;
   } catch (e) {
+    // Se der erro de rede, assume offline. Outros erros (403, 500) significam que o servidor respondeu.
     if (e.code === 'ERR_NETWORK') {
        bancoOnline.value = false;
     } else {
@@ -56,7 +57,7 @@ async function validarPin() {
   erro.value = null;
 
   try {
-    // Requisição com API_URL dinâmica
+    // CORREÇÃO: Usa a API_URL dinâmica aqui também
     const response = await axios.post(`${API_URL}/api/responsavel/validar-pin`, 
       { pin: pin.value },
       {
