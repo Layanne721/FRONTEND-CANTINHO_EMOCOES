@@ -10,7 +10,7 @@ const authStore = useAuthStore();
 // --- CONFIGURAÇÃO DA URL DA API ---
 // Se houver uma variável de ambiente (no Render), usa ela.
 // Se não, usa o localhost (no seu PC).
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
+const API_URL = import.meta.env.VITE_API_URL;
 
 const email = ref('');
 const senha = ref('');
