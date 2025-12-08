@@ -11,6 +11,10 @@ const authStore = useAuthStore();
 const dependentes = ref([]);
 const loading = ref(true);
 
+// --- CONFIGURAÇÃO DA URL DA API ---
+// Pega do .env (Render) ou usa localhost
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
+
 // Modais e Estados
 const showPinModal = ref(false);
 const showAddChildModal = ref(false);
@@ -30,7 +34,8 @@ onMounted(async () => {
 
 async function carregarDependentes() {
   try {
-    const response = await axios.get('http://localhost:8080/api/responsavel/dependentes', {
+    // CORREÇÃO: Usando API_URL
+    const response = await axios.get(`${API_URL}/api/responsavel/dependentes`, {
       headers: { Authorization: `Bearer ${authStore.token}` }
     });
     dependentes.value = response.data;
@@ -71,7 +76,8 @@ async function onPinSuccess() {
   else if (pinAction.value === 'DELETE_CHILD' && alunoParaExcluir.value) {
       if(confirm(`Tem certeza que deseja excluir o aluno ${alunoParaExcluir.value.nome}? Todo o histórico será apagado.`)) {
           try {
-              await axios.delete(`http://localhost:8080/api/responsavel/dependentes/${alunoParaExcluir.value.id}`, {
+              // CORREÇÃO: Usando API_URL
+              await axios.delete(`${API_URL}/api/responsavel/dependentes/${alunoParaExcluir.value.id}`, {
                   headers: { Authorization: `Bearer ${authStore.token}` }
               });
               await carregarDependentes();
@@ -91,7 +97,8 @@ async function salvarNovoAluno() {
 
   try {
     const ano = new Date().getFullYear() - novoAluno.value.idade;
-    await axios.post('http://localhost:8080/api/responsavel/dependentes', {
+    // CORREÇÃO: Usando API_URL
+    await axios.post(`${API_URL}/api/responsavel/dependentes`, {
       nome: novoAluno.value.nome,
       dataNascimento: `${ano}-01-01`,
       avatarUrl: novoAluno.value.avatar

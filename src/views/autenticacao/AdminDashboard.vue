@@ -7,6 +7,9 @@ import { useAuthStore } from '@/stores/auth';
 const router = useRouter();
 const authStore = useAuthStore();
 
+// --- CONFIGURAÇÃO DA URL DA API ---
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
+
 const usuarios = ref([]); // Lista hierárquica (Professores contêm Alunos)
 const loading = ref(true);
 const erro = ref(null);
@@ -29,7 +32,8 @@ async function carregarUsuarios() {
   loading.value = true;
   erro.value = null;
   try {
-    const response = await axios.get('http://localhost:8080/api/admin/usuarios', getHeaders());
+    // CORREÇÃO: Usando API_URL
+    const response = await axios.get(`${API_URL}/api/admin/usuarios`, getHeaders());
     usuarios.value = response.data;
   } catch (e) {
     erro.value = "Erro ao carregar lista.";
@@ -59,7 +63,6 @@ async function excluirUsuario(usuario) {
   // 2. Aviso sobre Cascata (Professor apaga Alunos)
   let mensagem = `⚠️ Tem certeza que deseja excluir o professor(a) ${usuario.nome}?`;
   
-  // Nota: O backend ainda retorna 'dependentes', mas visualmente tratamos como 'alunos'
   if (usuario.perfil === 'RESPONSAVEL' && usuario.dependentes && usuario.dependentes.length > 0) {
     mensagem += `\n\nATENÇÃO: Isso excluirá também ${usuario.dependentes.length} aluno(s) vinculados e seus diários!`;
   }
@@ -69,7 +72,8 @@ async function excluirUsuario(usuario) {
   deletandoId.value = usuario.id;
 
   try {
-    await axios.delete(`http://localhost:8080/api/admin/usuarios/${usuario.id}`, getHeaders());
+    // CORREÇÃO: Usando API_URL
+    await axios.delete(`${API_URL}/api/admin/usuarios/${usuario.id}`, getHeaders());
     
     // Atualiza a lista removendo o item excluído
     usuarios.value = usuarios.value.filter(u => u.id !== usuario.id);
@@ -101,7 +105,6 @@ const stats = computed(() => {
 
   usuarios.value.forEach(u => {
     if (u.perfil === 'ADMINISTRADOR') totalAdmins++;
-    // Backend usa 'RESPONSAVEL', frontend exibe 'PROFESSOR'
     if (u.perfil === 'RESPONSAVEL') {
       totalProfessores++;
       totalAlunos += u.dependentes ? u.dependentes.length : 0;
