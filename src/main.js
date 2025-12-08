@@ -1,20 +1,17 @@
-import axios from 'axios';
+import { createApp } from 'vue'
+import { createPinia } from 'pinia'
+import App from './App.vue'
+import router from './router'
+import './assets/main.css'
 
-// O Vite escolhe automaticamente a URL certa baseada no modo (dev ou produção)
-const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL,
-  headers: {
-    'Content-Type': 'application/json',
-  }
-});
+// Importa o api para garantir que ele seja carregado, 
+// mas a lógica principal está dentro dele mesmo.
+import '@/services/api'
 
-// Interceptores (opcional, mas recomendado passar o token automaticamente)
-api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('token');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  return config;
-});
+const app = createApp(App)
+const pinia = createPinia()
 
-export default api;
+app.use(pinia)
+app.use(router)
+
+app.mount('#app')
