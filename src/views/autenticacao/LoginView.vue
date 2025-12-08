@@ -7,6 +7,11 @@ import { useAuthStore } from '@/stores/auth';
 const router = useRouter();
 const authStore = useAuthStore();
 
+// --- CONFIGURAÇÃO DA URL DA API ---
+// Se houver uma variável de ambiente (no Render), usa ela.
+// Se não, usa o localhost (no seu PC).
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
+
 const email = ref('');
 const senha = ref('');
 const erro = ref(null);
@@ -25,7 +30,8 @@ async function checarStatusSistema() {
   erro.value = null;
   
   try {
-    await axios.get('http://localhost:8080/api/health');
+    // Usa a URL dinâmica aqui
+    await axios.get(`${API_URL}/api/health`);
     bancoOnline.value = true;
   } catch (e) {
     if (e.code === 'ERR_NETWORK') {
@@ -33,6 +39,7 @@ async function checarStatusSistema() {
         bancoOnline.value = false;
         erro.value = "⚠️ Sem conexão com o servidor.";
     } else {
+        // Se responder 404 ou 500, o servidor está vivo, só deu erro na rota
         bancoOnline.value = true;
     }
   } finally {
@@ -47,7 +54,8 @@ async function fazerLogin() {
   isSubmitting.value = true;
   
   try {
-    const response = await axios.post('http://localhost:8080/auth/login', {
+    // Usa a URL dinâmica aqui também
+    const response = await axios.post(`${API_URL}/auth/login`, {
       email: email.value,
       senha: senha.value
     }, {
@@ -63,6 +71,7 @@ async function fazerLogin() {
       throw new Error('Erro na requisição');
     }
 
+    // Salva no Pinia/Store
     authStore.setLoginData(
       { 
         name: response.data.nome, 
@@ -73,6 +82,7 @@ async function fazerLogin() {
       response.data.token
     );
     
+    // Redirecionamento
     if (response.data.role === 'ADMINISTRADOR') {
         router.push('/admin');
     } else {
