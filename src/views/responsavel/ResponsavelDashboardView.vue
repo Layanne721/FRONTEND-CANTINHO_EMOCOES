@@ -127,7 +127,8 @@ const novaAtividade = ref({ tipo: 'VOGAL', conteudo: 'A' });
 const enviandoAtividade = ref(false);
 const alunosSelecionadosParaEnvio = ref([]); 
 const selecionarTodos = ref(false); 
-const totalAtividadesEnviadasPeloProfessor = ref(0);
+// RENOMEADO: Agora rastreia o total de atribuições globais (todas as entradas de Tarefa)
+const totalAtividadesAtribuidasGlobal = ref(0); 
 
 // --- GERENCIAMENTO DE TURMA ---
 const modoEdicao = ref(false);
@@ -138,7 +139,7 @@ const novoAluno = ref({ nome: '', dataNascimento: '', avatarUrl: 'https://api.di
 onMounted(async () => {
   await carregarAlunos();
   await carregarTemplatesAvaliacao(); 
-  await buscarTotalAtividadesEnviadas();
+  await buscarTotalAtribuicoesGlobal(); // Chamada renomeada
   await carregarDadosGeraisTurma(); 
   await carregarSemanario();
 });
@@ -198,13 +199,78 @@ async function carregarTemplatesAvaliacao() {
     } catch (e) { console.error(e); }
 }
 
-async function buscarTotalAtividadesEnviadas() {
+// FUNÇÃO RENOMEADA
+async function buscarTotalAtribuicoesGlobal() {
     try {
-        const res = await api.get('/api/atividades/total-enviadas');
-        totalAtividadesEnviadasPeloProfessor.value = res.data.total || 0;
+        // Agora, este endpoint retorna o total de atribuições feitas (uma Tarefa por aluno selecionado)
+        const res = await api.get('/api/atividades/total-enviadas-global'); 
+        totalAtividadesAtribuidasGlobal.value = res.data.total || 0;
     } catch (e) {
-        totalAtividadesEnviadasPeloProfessor.value = 0;
+        totalAtividadesAtribuidasGlobal.value = 0;
     }
+}
+
+// LÓGICA CORRIGIDA para o cálculo individual
+async function carregarDadosGeraisTurma() {
+    carregandoGeral.value = true;
+    dadosTurma.value = [];
+    try {
+        const promises = dependentes.value.map(async (aluno) => {
+            try {
+                // 1. Busca total de tarefas ATRIBUÍDAS INDIVIDUALMENTE a este aluno (NOVO ENDPOINT)
+                const totalAtribuidasRes = await api.get(`/api/atividades/total-atribuidas/${aluno.id}`);
+                const totalAtribuidas = totalAtribuidasRes.data.total || 0;
+                
+                // 2. Busca atividades específicas do aluno
+                const ativRes = await api.get(`/api/atividades/aluno/${aluno.id}`);
+                
+                const atividadesGuiadas = ativRes.data.filter(a => a.tipo !== 'LIVRE');
+                const entregues = atividadesGuiadas.length;
+                
+                // 3. CÁLCULO DE PENDENTES AGORA É INDIVIDUAL
+                const pendentes = Math.max(0, totalAtribuidas - entregues); 
+
+                return {
+                    id: aluno.id,
+                    nome: aluno.nome,
+                    avatarUrl: aluno.avatarUrl,
+                    atividadesFeitas: entregues,
+                    atividadesPendentes: pendentes,
+                    ultimaAtividade: atividadesGuiadas.length > 0 ? atividadesGuiadas[0].dataRealizacao : null
+                };
+            } catch (e) {
+                 console.error(`Erro ao carregar dados do aluno ${aluno.id}:`, e);
+                 // Retorna 0 pendentes em caso de erro, mas mantém a estrutura
+                 return { 
+                     id: aluno.id, 
+                     nome: aluno.nome, 
+                     avatarUrl: aluno.avatarUrl, 
+                     atividadesFeitas: 0, 
+                     atividadesPendentes: 0, 
+                     ultimaAtividade: null 
+                 };
+            }
+        });
+        const resultados = await Promise.all(promises);
+        dadosTurma.value = resultados.sort((a, b) => b.atividadesFeitas - a.atividadesFeitas);
+    } catch (e) { console.error("Erro ao carregar dados gerais da turma:", e); }
+    finally { carregandoGeral.value = false; }
+}
+
+async function carregarDadosAluno(id) {
+    carregandoDados.value = true;
+    try {
+        const dashRes = await api.get(`/api/responsavel/dependentes/${id}/dashboard`);
+        dadosDashboard.value = dashRes.data;
+        
+        const ativRes = await api.get(`/api/atividades/aluno/${id}`);
+        listaAtividades.value = ativRes.data;
+        
+        // Não forçamos o carregamento da avaliação aqui para não sobrescrever dados não salvos se a aba não estiver ativa
+        if(abaAlunoAtual.value === 'avaliacao') {
+             await buscarAvaliacaoSalva(false); // false = não sobrescrever se tiver sujeira
+        }
+    } catch (e) { console.error(e); } finally { carregandoDados.value = false; }
 }
 
 // --- LÓGICA DO SEMANÁRIO (ATUALIZADA) ---
@@ -322,54 +388,6 @@ async function salvarDiarioProfessor() {
     }
 }
 
-async function carregarDadosGeraisTurma() {
-    carregandoGeral.value = true;
-    dadosTurma.value = [];
-    try {
-        const promises = dependentes.value.map(async (aluno) => {
-            try {
-                // Busca atividades específicas do aluno
-                // Nota: token vai automático, não precisa passar
-                const ativRes = await api.get(`/api/atividades/aluno/${aluno.id}`);
-                
-                const atividadesGuiadas = ativRes.data.filter(a => a.tipo !== 'LIVRE');
-                const entregues = atividadesGuiadas.length;
-                const pendentes = Math.max(0, totalAtividadesEnviadasPeloProfessor.value - entregues);
-
-                return {
-                    id: aluno.id,
-                    nome: aluno.nome,
-                    avatarUrl: aluno.avatarUrl,
-                    atividadesFeitas: entregues,
-                    atividadesPendentes: pendentes,
-                    ultimaAtividade: atividadesGuiadas.length > 0 ? atividadesGuiadas[0].dataRealizacao : null
-                };
-            } catch {
-                return { id: aluno.id, nome: aluno.nome, avatarUrl: aluno.avatarUrl, atividadesFeitas: 0, atividadesPendentes: totalAtividadesEnviadasPeloProfessor.value, ultimaAtividade: null };
-            }
-        });
-        const resultados = await Promise.all(promises);
-        dadosTurma.value = resultados.sort((a, b) => b.atividadesFeitas - a.atividadesFeitas);
-    } catch (e) { console.error(e); }
-    finally { carregandoGeral.value = false; }
-}
-
-async function carregarDadosAluno(id) {
-    carregandoDados.value = true;
-    try {
-        const dashRes = await api.get(`/api/responsavel/dependentes/${id}/dashboard`);
-        dadosDashboard.value = dashRes.data;
-        
-        const ativRes = await api.get(`/api/atividades/aluno/${id}`);
-        listaAtividades.value = ativRes.data;
-        
-        // Não forçamos o carregamento da avaliação aqui para não sobrescrever dados não salvos se a aba não estiver ativa
-        if(abaAlunoAtual.value === 'avaliacao') {
-             await buscarAvaliacaoSalva(false); // false = não sobrescrever se tiver sujeira
-        }
-    } catch (e) { console.error(e); } finally { carregandoDados.value = false; }
-}
-
 // --- GERENCIAMENTO DE ALUNOS ---
 
 function gerarNovoAvatar() {
@@ -438,11 +456,14 @@ function cancelarEdicao() {
 // --- COMPUTEDS E GRÁFICOS ---
 const dicaRendimentoGeral = computed(() => {
     if (dadosTurma.value.length === 0) return { texto: "Aguardando dados...", cor: "bg-gray-100 text-gray-500" };
-    const totalAtividades = dadosTurma.value.reduce((acc, curr) => acc + curr.atividadesFeitas, 0);
-    const media = totalAtividades / dadosTurma.value.length;
-    const proporcao = totalAtividadesEnviadasPeloProfessor.value > 0 ? (media / totalAtividadesEnviadasPeloProfessor.value) : 0;
-    if (proporcao > 0.6) return { texto: "Excelente! A turma está engajada.", cor: "bg-green-100 text-green-700", icon: "🌟" };
-    if (proporcao > 0.3) return { texto: "Bom progresso. Incentive mais.", cor: "bg-blue-100 text-blue-700", icon: "📈" };
+    
+    const totalEntregues = dadosTurma.value.reduce((acc, curr) => acc + curr.atividadesFeitas, 0);
+    // Soma as entregues e as pendentes para ter o total de atribuições REAL da turma
+    const totalAtribuicoesReal = dadosTurma.value.reduce((acc, curr) => acc + (curr.atividadesFeitas + curr.atividadesPendentes), 0);
+    const proporcaoReal = totalAtribuicoesReal > 0 ? (totalEntregues / totalAtribuicoesReal) : 0;
+    
+    if (proporcaoReal > 0.6) return { texto: "Excelente! A turma está engajada.", cor: "bg-green-100 text-green-700", icon: "🌟" };
+    if (proporcaoReal > 0.3) return { texto: "Bom progresso. Incentive mais.", cor: "bg-blue-100 text-blue-700", icon: "📈" };
     return { texto: "Atenção necessária. Engajamento baixo.", cor: "bg-orange-100 text-orange-700", icon: "⚠️" };
 });
 
@@ -591,7 +612,7 @@ function verVisaoGeral() {
     alunoSelecionado.value = null;
     viewAtual.value = 'geral';
     abaMobile.value = 'painel'; 
-    buscarTotalAtividadesEnviadas().then(() => carregarDadosGeraisTurma());
+    buscarTotalAtribuicoesGlobal().then(() => carregarDadosGeraisTurma());
 }
 
 function verSemanario() {
@@ -618,21 +639,36 @@ async function selecionarAluno(aluno) {
     await carregarDadosAluno(aluno.id);
 }
 
-// --- ENVIAR ATIVIDADE ---
+// FUNÇÃO ATUALIZADA
 async function enviarAtividade() {
     if (!novaAtividade.value.conteudo && novaAtividade.value.tipo !== 'LIVRE') return alert("Digite o conteúdo.");
     if (alunosSelecionadosParaEnvio.value.length === 0) return alert("Selecione pelo menos um aluno.");
     
     enviandoAtividade.value = true;
     try {
-        await api.post('/api/atividades/definir-tarefa', { tipo: novaAtividade.value.tipo, conteudo: novaAtividade.value.conteudo || '' });
+        // Envia os dados para o novo endpoint/DTO que trata a lista de IDs
+        await api.post('/api/atividades/definir-tarefa', { 
+            tipo: novaAtividade.value.tipo, 
+            conteudo: novaAtividade.value.conteudo || '',
+            alunoIds: alunosSelecionadosParaEnvio.value // Lista de IDs de Long
+        });
         
-        alert(`Atividade enviada para ${alunosSelecionadosParaEnvio.value.length} alunos!`);
-        totalAtividadesEnviadasPeloProfessor.value++; 
+        alert(`Atividade enviada para ${alunosSelecionadosParaEnvio.value.length} aluno(s)!`);
+        
+        // Limpa formulário
         novaAtividade.value = { tipo: 'VOGAL', conteudo: '' };
         alunosSelecionadosParaEnvio.value = [];
         selecionarTodos.value = false;
-    } catch (e) { alert("Erro ao enviar."); } finally { enviandoAtividade.value = false; }
+
+        // Atualiza a visão geral, buscando os novos totais de atribuições globais e individuais
+        await buscarTotalAtribuicoesGlobal();
+        await carregarDadosGeraisTurma();
+    } catch (e) { 
+        console.error(e);
+        alert("Erro ao enviar atividade."); 
+    } finally { 
+        enviandoAtividade.value = false; 
+    }
 }
 
 function imprimirRelatorio() { window.print(); }
@@ -812,7 +848,7 @@ watch([subTabAvaliacao, abaAlunoAtual], async () => {
                     <div class="mb-8 flex justify-between items-end">
                         <div>
                             <h2 class="text-xl md:text-2xl font-black text-gray-800">Rendimento Geral</h2>
-                            <p class="text-gray-500 font-bold text-xs">Total de envios: <span class="text-indigo-600">{{ totalAtividadesEnviadasPeloProfessor }}</span></p>
+                            <p class="text-gray-500 font-bold text-xs">Total de Atribuições: <span class="text-indigo-600">{{ totalAtividadesAtribuidasGlobal }}</span></p>
                         </div>
                     </div>
                     <div :class="['p-4 md:p-6 rounded-3xl mb-8 flex items-center gap-4 shadow-sm border', dicaRendimentoGeral.cor]">
