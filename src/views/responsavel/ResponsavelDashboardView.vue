@@ -22,7 +22,7 @@ const tiposAtividade = [
     { label: 'Livre', value: 'LIVRE' }
 ];
 
-// --- LISTA DE AVATARES DISPONÍVEIS (Recurso da Versão 2) ---
+// --- LISTA DE AVATARES DISPONÍVEIS ---
 const listaAvatares = [
     'https://api.dicebear.com/7.x/adventurer/svg?seed=Felix',
     'https://api.dicebear.com/7.x/adventurer/svg?seed=Aneka',
@@ -153,7 +153,7 @@ const alunoEmEdicao = ref(null);
 const cadastrandoAluno = ref(false);
 const novoAluno = ref({ nome: '', dataNascimento: '', avatarUrl: listaAvatares[0] });
 
-// Gerenciamento Professor (Recurso da Versão 2)
+// Gerenciamento Professor
 const showTeacherModal = ref(false);
 const professorForm = ref({ nome: authStore.user?.name || '', avatarUrl: authStore.user?.avatarUrl || '' });
 const salvandoProfessor = ref(false);
@@ -165,10 +165,10 @@ const alunosFiltrados = computed(() => {
     return dadosTurma.value.filter(aluno => aluno.nome.toLowerCase().includes(termo));
 });
 
-// RESTAURADA LÓGICA DE FILTRO DA VERSÃO 1 PARA GARANTIR CARREGAMENTO
+// Mantemos o filtro AQUI apenas para visualização na lista "Tarefas da Escola", 
+// mas o cálculo geral de rendimento é feito na função carregarDadosGeraisTurma (sem filtro).
 const atividadesEscolares = computed(() => {
     if (!listaAtividades.value) return [];
-    // Apenas filtra o que não é LIVRE, como na Versão 1
     return listaAtividades.value.filter(a => a.tipo !== 'LIVRE').sort((a, b) => new Date(b.dataRealizacao) - new Date(a.dataRealizacao));
 });
 
@@ -238,23 +238,28 @@ async function buscarTotalAtribuicoesGlobal() {
     }
 }
 
-// RESTAURADA LÓGICA DA VERSÃO 1 (Cálculo no Frontend)
+// --- CORREÇÃO AQUI ---
+// Removemos o filtro que ignorava 'LIVRE' na contagem de atividades feitas.
+// Agora conta tudo (entregues = atividadesRealizadas.length).
 async function carregarDadosGeraisTurma() {
     carregandoGeral.value = true;
     dadosTurma.value = [];
     try {
         const promises = dependentes.value.map(async (aluno) => {
             try {
-                // Busca total de atribuições
+                // Busca total de atribuições (O backend já inclui as tarefas do tipo LIVRE neste total)
                 const totalAtribuidasRes = await api.get(`/api/atividades/total-atribuidas/${aluno.id}`);
                 const totalAtribuidas = totalAtribuidasRes.data.total || 0;
                 
-                // Busca atividades realizadas
+                // Busca atividades realizadas (Todas: VOGAL, NUMERO e LIVRE)
                 const ativRes = await api.get(`/api/atividades/aluno/${aluno.id}`);
                 const atividadesRealizadas = ativRes.data; 
                 
-                // CÁLCULO SEGURO (Lógica V1): Conta entregues localmente
-                const entregues = atividadesRealizadas.filter(a => a.tipo !== 'LIVRE').length;
+                // --- FIX: CONTAR TUDO ---
+                // Antes: const entregues = atividadesRealizadas.filter(a => a.tipo !== 'LIVRE').length;
+                const entregues = atividadesRealizadas.length;
+                
+                // Calcula pendentes
                 const pendentes = Math.max(0, totalAtribuidas - entregues); 
 
                 return {
@@ -276,7 +281,6 @@ async function carregarDadosGeraisTurma() {
     finally { carregandoGeral.value = false; }
 }
 
-// RESTAURADA LÓGICA DA VERSÃO 1 (Sem endpoint 'contar-tarefas-livre' que causava erro)
 async function carregarDadosAluno(id) {
     carregandoDados.value = true;
     try {
@@ -313,10 +317,9 @@ async function salvarPerfilProfessor() {
     salvandoProfessor.value = true;
     
     try {
-        // Tenta enviar para o backend
         await api.put('/auth/meu-perfil', { 
-            name: professorForm.value.nome, // Tente mudar para 'nome' se o backend for em PT
-            nome: professorForm.value.nome, // Enviando os dois para garantir
+            name: professorForm.value.nome, 
+            nome: professorForm.value.nome, 
             avatarUrl: professorForm.value.avatarUrl 
         });
 
@@ -324,19 +327,12 @@ async function salvarPerfilProfessor() {
 
     } catch (e) {
         console.error("O backend deu erro, mas vamos atualizar visualmente:", e);
-        
-        // --- BYPASS / MODO VISUAL ---
-        // Mesmo com erro 500, vamos forçar a atualização da tela
-        // para você não ficar travado.
         alert("Aviso: O servidor falhou (Erro 500), mas atualizei seu perfil localmente.");
     } finally {
-        // ATUALIZA O ESTADO LOCAL (STORE) INDEPENDENTE DO ERRO
         if(authStore.user) {
             authStore.user.name = professorForm.value.nome;
             authStore.user.avatarUrl = professorForm.value.avatarUrl;
             
-            // Força a atualização do localStorage para persistir ao recarregar (F5)
-            // Nota: Isso depende de como seu 'setLoginData' funciona, ou faça manual:
             const userData = JSON.parse(localStorage.getItem('user') || '{}');
             userData.name = professorForm.value.nome;
             userData.avatarUrl = professorForm.value.avatarUrl;
@@ -480,7 +476,6 @@ function cancelarEdicao() {
 }
 
 function gerarNovoAvatar() {
-    // Função mantida para compatibilidade
     novoAluno.value.avatarUrl = 'https://api.dicebear.com/7.x/adventurer/svg?seed=' + Date.now();
 }
 
@@ -546,7 +541,6 @@ const chartOptionsCommon = { responsive: true, maintainAspectRatio: false, plugi
 const sugestaoPedagogica = computed(() => {
     const registros = dadosDashboard.value?.historicoGrafico || [];
     if (registros.length === 0) return null;
-    // Pega o registro mais recente (assumindo que o back manda ordenado ou ordenamos)
     const registrosOrdenados = [...registros].sort((a, b) => new Date(b.dataRegistro) - new Date(a.dataRegistro));
     const ultimaEmocao = registrosOrdenados[0].emocao;
     
