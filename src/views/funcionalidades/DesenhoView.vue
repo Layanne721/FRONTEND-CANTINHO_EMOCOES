@@ -1,7 +1,7 @@
 <script setup>
 import { ref, onMounted, onUnmounted, nextTick } from 'vue';
 import { useRouter, useRoute } from 'vue-router'; 
-import api from '@/services/api'; // <--- IMPORTAÇÃO NOVA
+import api from '@/services/api'; 
 import { useAuthStore } from '@/stores/auth';
 
 const router = useRouter();
@@ -18,9 +18,42 @@ const corAtual = ref('#3B82F6');
 const tamanhoPincel = ref(5);
 const ferramentaAtual = ref('pincel');
 
-// --- ATIVIDADE (A BASE) ---
+// --- ATIVIDADE ---
 const conteudoBase = ref(route.query.conteudo || ''); 
 const tipoAtividade = ref(route.query.tipo || 'LIVRE');
+
+// --- BANCO DE DESENHOS (PATHS SVG - OUTLINES PARA COLORIR) ---
+// Agora inclui as chaves corretas (FELIZ, MACA, etc.) para corresponder ao envio do professor
+const bancoDesenhos = {
+    // 1. Formas Geométricas
+    'Círculo': 'M12 2 A10 10 0 1 1 12 22 A10 10 0 1 1 12 2 Z',
+    'Quadrado': 'M3 3 H21 V21 H3 Z',
+    'Triângulo': 'M12 3 L22 21 H2 Z',
+    'Retângulo': 'M2 6 H22 V18 H2 Z',
+    'Estrela': 'M12 2 L15 9 L22 9 L17 14 L19 21 L12 17 L5 21 L7 14 L2 9 L9 9 Z',
+    'Coração': 'M12 21.35 L10.55 20.03 C5.4 15.36 2 12.28 2 8.5 C2 5.42 4.42 3 7.5 3 C9.24 3 10.91 3.81 12 5.09 C13.09 3.81 14.76 3 16.5 3 C19.58 3 22 5.42 22 8.5 C22 12.28 18.6 15.36 13.45 20.04 L12 21.35 Z',
+    'Losango': 'M12 2 L22 12 L12 22 L2 12 Z',
+    'Pentágono': 'M12 2 L22 9 L18 21 H6 L2 9 Z',
+    'Hexágono': 'M12 2 L21 7 L21 17 L12 22 L3 17 L3 7 Z',
+    'Oval': 'M12 4 C6 4 2 7 2 12 C2 17 6 20 12 20 C18 20 22 17 22 12 C22 7 18 4 12 4 Z',
+    'Trapézio': 'M5 18 L8 6 H16 L19 18 H5 Z',
+
+    // 2. Emoções (Códigos em MAIÚSCULO enviados pelo professor)
+    'FELIZ': 'M12 2 A10 10 0 1 1 12 22 A10 10 0 1 1 12 2 M8 9 A1 1 0 1 1 8 9.01 M16 9 A1 1 0 1 1 16 9.01 M7 14 Q12 19 17 14',
+    'TRISTE': 'M12 2 A10 10 0 1 1 12 22 A10 10 0 1 1 12 2 M8 9 A1 1 0 1 1 8 9.01 M16 9 A1 1 0 1 1 16 9.01 M7 17 Q12 13 17 17',
+    'BRAVO': 'M12 2 A10 10 0 1 1 12 22 A10 10 0 1 1 12 2 M7 8 L9 10 M17 8 L15 10 M8 10 A1 1 0 1 1 8 10.01 M16 10 A1 1 0 1 1 16 10.01 M8 16 Q12 14 16 16',
+    'CALMO': 'M12 2 A10 10 0 1 1 12 22 A10 10 0 1 1 12 2 M7 10 Q9 8 11 10 M13 10 Q15 8 17 10 M8 15 H16',
+    'MEDO': 'M12 2 A10 10 0 1 1 12 22 A10 10 0 1 1 12 2 M8 9 A1 1 0 1 1 8 9.01 M16 9 A1 1 0 1 1 16 9.01 M10 14 A2 3 0 1 1 14 14 A2 3 0 1 1 10 14',
+    'ANSIOSO': 'M12 2 A10 10 0 1 1 12 22 A10 10 0 1 1 12 2 M8 9 A1 1 0 1 1 8 9.01 M16 9 A1 1 0 1 1 16 9.01 M7 15 H17 M7 15 Q7 17 9 17 H15 Q17 17 17 15 M9 15 V17 M11 15 V17 M13 15 V17 M15 15 V17',
+
+    // 3. Frutas (Códigos em MAIÚSCULO enviados pelo professor)
+    'MACA': 'M12 21 C12 21 7 20 7 15 C7 11 10 9 12 11 C14 9 17 11 17 15 C17 20 12 21 12 21 Z M12 11 Q12 6 15 4 M12 11 L12 9',
+    'BANANA': 'M6 18 Q4 10 14 4 Q18 4 18 6 Q16 10 18 18 Q16 20 6 18 M18 6 L20 4',
+    'UVA': 'M12 6 A3 3 0 1 1 12 12 A3 3 0 1 1 12 6 M9 10 A3 3 0 1 1 9 16 A3 3 0 1 1 9 10 M15 10 A3 3 0 1 1 15 16 A3 3 0 1 1 15 10 M12 15 A3 3 0 1 1 12 21 A3 3 0 1 1 12 15 M12 6 L12 2 M12 2 L15 4',
+    'LARANJA': 'M12 2 A10 10 0 1 1 12 22 A10 10 0 1 1 12 2 Z M12 2 V5 M4 10 L6 11 M20 10 L18 11 M8 20 L9 18',
+    'MORANGO': 'M7 8 Q12 23 17 8 Q17 5 12 5 Q7 5 7 8 Z M6 8 L8 5 M18 8 L16 5 M12 5 V3',
+    'ABACAXI': 'M7 10 Q7 22 12 22 Q17 22 17 10 Q17 8 12 8 Q7 8 7 10 Z M12 8 L10 2 M12 8 L14 2 M12 8 L12 1 M7 14 L17 18 M7 18 L17 14'
+};
 
 // Paleta de Cores
 const cores = [
@@ -70,22 +103,49 @@ function desenharGuia() {
     if (!conteudoBase.value || !ctx.value) return;
 
     const canvas = canvasRef.value;
-    const texto = conteudoBase.value.toUpperCase();
+    const conteudo = conteudoBase.value;
+    
+    // Tenta encontrar no banco de desenhos
+    const pathSvg = bancoDesenhos[conteudo];
 
     ctx.value.save(); 
     
-    const tamanhoFonte = Math.min(canvas.width, canvas.height) * 0.6; 
-    ctx.value.font = `900 ${tamanhoFonte}px Nunito, sans-serif`;
-    ctx.value.fillStyle = '#E5E7EB'; 
-    ctx.value.textAlign = 'center';
-    ctx.value.textBaseline = 'middle';
-    
-    ctx.value.fillText(texto, canvas.width / 2, canvas.height / 2);
-    
-    ctx.value.strokeStyle = '#D1D5DB';
+    // Configuração do traço guia (Tracejado cinza claro)
+    ctx.value.strokeStyle = '#D1D5DB'; // Cinza claro
     ctx.value.lineWidth = 2;
-    ctx.value.setLineDash([10, 10]);
-    ctx.value.strokeText(texto, canvas.width / 2, canvas.height / 2);
+    ctx.value.setLineDash([10, 10]); // Tracejado
+    ctx.value.fillStyle = 'rgba(0,0,0,0)'; // Transparente TOTAL
+
+    if (pathSvg) {
+        // --- DESENHAR SVG (Forma, Emoção ou Fruta) ---
+        const path = new Path2D(pathSvg);
+        
+        // Calcular escala para centralizar no canvas
+        const padding = 40;
+        const tamanhoMenorTela = Math.min(canvas.width, canvas.height);
+        const tamanhoDesenho = tamanhoMenorTela - (padding * 2);
+        const escala = tamanhoDesenho / 24; // SVGs são base 24px
+        
+        // Centralizar
+        const offsetX = (canvas.width - (24 * escala)) / 2;
+        const offsetY = (canvas.height - (24 * escala)) / 2;
+
+        ctx.value.translate(offsetX, offsetY);
+        ctx.value.scale(escala, escala);
+        ctx.value.stroke(path);
+        // IMPORTANTE: Não usamos fill() para garantir que fique "vazado" para colorir
+    } else {
+        // --- DESENHAR TEXTO (Letras/Números apenas se não achar desenho) ---
+        const texto = conteudo.toUpperCase();
+        const tamanhoFonte = Math.min(canvas.width, canvas.height) * 0.6; 
+        
+        ctx.value.font = `900 ${tamanhoFonte}px Nunito, sans-serif`;
+        ctx.value.textAlign = 'center';
+        ctx.value.textBaseline = 'middle';
+        
+        // Apenas o contorno (stroke)
+        ctx.value.strokeText(texto, canvas.width / 2, canvas.height / 2);
+    }
 
     ctx.value.restore(); 
 }
@@ -193,20 +253,18 @@ async function salvarDesenho() {
   const imagemBase64 = canvas.toDataURL('image/png');
 
   try {
-    // --- AUTOMATIZADO: Usa 'api' em vez de 'axios' ---
     await api.post('/api/atividades', {
       tipo: tipoAtividade.value,
       conteudo: conteudoBase.value,
       desenhoBase64: imagemBase64
     }, {
       headers: { 
-        // Não precisa passar Authorization, o api.js já manda!
         'x-child-id': authStore.criancaSelecionada?.id
       }
     });
 
     if (conteudoBase.value) {
-        alert(`Parabéns! Você completou a atividade da letra "${conteudoBase.value}"! ⭐`);
+        alert(`Parabéns! Você completou a atividade! ⭐`);
     } else {
         alert("Que desenho lindo! Obrigado por compartilhar! 🎨");
     }
@@ -235,7 +293,7 @@ function fecharDesenho() {
           ✕
         </button>
         <h1 class="text-lg md:text-2xl font-extrabold text-roxo-titulo hidden md:block">
-          🎨 {{ conteudoBase ? `Vamos desenhar: ${conteudoBase}` : 'Desenho Livre' }}
+          🎨 {{ conteudoBase ? `Vamos pintar: ${conteudoBase}` : 'Desenho Livre' }}
         </h1>
       </div>
       

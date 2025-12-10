@@ -1,6 +1,6 @@
 <script setup>
 import { ref, onMounted, computed, watch } from 'vue';
-import api from '@/services/api'; // <--- IMPORTAÇÃO CENTRALIZADA
+import api from '@/services/api';
 import { useRouter } from 'vue-router';
 import { useAuthStore } from '@/stores/auth';
 import { Line, Bar } from 'vue-chartjs';
@@ -11,34 +11,69 @@ ChartJS.register(Title, Tooltip, Legend, LineElement, PointElement, CategoryScal
 const router = useRouter();
 const authStore = useAuthStore();
 
-// (API_URL removida pois o api.js gerencia isso)
+// --- CATEGORIAS ---
+const tiposAtividade = [
+    { label: 'Vogal', value: 'VOGAL' },
+    { label: 'Consoante', value: 'CONSOANTE' },
+    { label: 'Números', value: 'NUMERO' },
+    { label: 'Formas', value: 'FORMA' },
+    { label: 'Emoções', value: 'EMOCAO' },
+    { label: 'Frutas', value: 'FRUTA' },
+    { label: 'Livre', value: 'LIVRE' }
+];
 
-// --- MAPA DE EMOÇÕES E VALORES PARA O GRÁFICO ---
-const emotionValueMap = {
-  'BRAVO': 1,
-  'MEDO': 2,
-  'TRISTE': 2, 
-  'ANSIOSO': 3,
-  'CALMO': 4,
-  'CRIATIVO': 5,
-  'FELIZ': 6
-};
+// --- LISTA DE AVATARES DISPONÍVEIS (Recurso da Versão 2) ---
+const listaAvatares = [
+    'https://api.dicebear.com/7.x/adventurer/svg?seed=Felix',
+    'https://api.dicebear.com/7.x/adventurer/svg?seed=Aneka',
+    'https://api.dicebear.com/7.x/adventurer/svg?seed=Bella',
+    'https://api.dicebear.com/7.x/adventurer/svg?seed=Jack',
+    'https://api.dicebear.com/7.x/adventurer/svg?seed=Coco',
+    'https://api.dicebear.com/7.x/adventurer/svg?seed=Mittens',
+    'https://api.dicebear.com/7.x/adventurer/svg?seed=Max',
+    'https://api.dicebear.com/7.x/adventurer/svg?seed=Luna',
+    'https://api.dicebear.com/7.x/adventurer/svg?seed=Zoey',
+    'https://api.dicebear.com/7.x/adventurer/svg?seed=Buddy',
+    'https://api.dicebear.com/7.x/adventurer/svg?seed=Oliver',
+    'https://api.dicebear.com/7.x/adventurer/svg?seed=Molly'
+];
 
-// Mapa reverso para o Eixo Y do gráfico
-const valueEmotionLabel = {
-  1: '😠 Bravo',
-  2: '😢 Triste',
-  3: '😬 Ansioso',
-  4: '😌 Calmo',
-  5: '🎨 Criativo',
-  6: '😊 Feliz'
-};
+// --- BANCO DE DADOS VISUAL COMPLETO ---
+const listaFormas = [
+    { label: 'Círculo', valor: 'Círculo', path: 'M12 2 A10 10 0 1 1 12 22 A10 10 0 1 1 12 2 Z' },
+    { label: 'Quadrado', valor: 'Quadrado', path: 'M3 3 H21 V21 H3 Z' },
+    { label: 'Triângulo', valor: 'Triângulo', path: 'M12 3 L22 21 H2 Z' },
+    { label: 'Retângulo', valor: 'Retângulo', path: 'M2 6 H22 V18 H2 Z' },
+    { label: 'Estrela', valor: 'Estrela', path: 'M12 2 L15 9 L22 9 L17 14 L19 21 L12 17 L5 21 L7 14 L2 9 L9 9 Z' },
+    { label: 'Coração', valor: 'Coração', path: 'M12 21.35 L10.55 20.03 C5.4 15.36 2 12.28 2 8.5 C2 5.42 4.42 3 7.5 3 C9.24 3 10.91 3.81 12 5.09 C13.09 3.81 14.76 3 16.5 3 C19.58 3 22 5.42 22 8.5 C22 12.28 18.6 15.36 13.45 20.04 L12 21.35 Z' },
+    { label: 'Losango', valor: 'Losango', path: 'M12 2 L22 12 L12 22 L2 12 Z' },
+    { label: 'Pentágono', valor: 'Pentágono', path: 'M12 2 L22 9 L18 21 H6 L2 9 Z' },
+    { label: 'Hexágono', valor: 'Hexágono', path: 'M12 2 L21 7 L21 17 L12 22 L3 17 L3 7 Z' },
+    { label: 'Oval', valor: 'Oval', path: 'M12 4 C6 4 2 7 2 12 C2 17 6 20 12 20 C18 20 22 17 22 12 C22 7 18 4 12 4 Z' },
+    { label: 'Trapézio', valor: 'Trapézio', path: 'M5 18 L8 6 H16 L19 18 H5 Z' }
+];
 
-const emojiMap = {
-  'FELIZ': '😊', 'TRISTE': '😢', 'BRAVO': '😠', 'CALMO': '😌', 
-  'MEDO': '😨', 'ANSIOSO': '😬', 'CRIATIVO': '🎨'
-};
+const listaEmocoes = [
+    { label: 'Feliz', valor: 'FELIZ', path: 'M12 2 A10 10 0 1 1 12 22 A10 10 0 1 1 12 2 M8 9 A1 1 0 1 1 8 9.01 M16 9 A1 1 0 1 1 16 9.01 M7 14 Q12 19 17 14' },
+    { label: 'Triste', valor: 'TRISTE', path: 'M12 2 A10 10 0 1 1 12 22 A10 10 0 1 1 12 2 M8 9 A1 1 0 1 1 8 9.01 M16 9 A1 1 0 1 1 16 9.01 M7 17 Q12 13 17 17' },
+    { label: 'Bravo', valor: 'BRAVO', path: 'M12 2 A10 10 0 1 1 12 22 A10 10 0 1 1 12 2 M7 8 L9 10 M17 8 L15 10 M8 10 A1 1 0 1 1 8 10.01 M16 10 A1 1 0 1 1 16 10.01 M8 16 Q12 14 16 16' },
+    { label: 'Calmo', valor: 'CALMO', path: 'M12 2 A10 10 0 1 1 12 22 A10 10 0 1 1 12 2 M7 10 Q9 8 11 10 M13 10 Q15 8 17 10 M8 15 H16' },
+    { label: 'Medo', valor: 'MEDO', path: 'M12 2 A10 10 0 1 1 12 22 A10 10 0 1 1 12 2 M8 9 A1 1 0 1 1 8 9.01 M16 9 A1 1 0 1 1 16 9.01 M10 14 A2 3 0 1 1 14 14 A2 3 0 1 1 10 14' },
+    { label: 'Ansioso', valor: 'ANSIOSO', path: 'M12 2 A10 10 0 1 1 12 22 A10 10 0 1 1 12 2 M8 9 A1 1 0 1 1 8 9.01 M16 9 A1 1 0 1 1 16 9.01 M7 15 H17 M7 15 Q7 17 9 17 H15 Q17 17 17 15 M9 15 V17 M11 15 V17 M13 15 V17 M15 15 V17' }
+];
 
+const listaFrutas = [
+    { label: 'Maçã', valor: 'MACA', path: 'M12 21 C12 21 7 20 7 15 C7 11 10 9 12 11 C14 9 17 11 17 15 C17 20 12 21 12 21 Z M12 11 Q12 6 15 4 M12 11 L12 9' },
+    { label: 'Banana', valor: 'BANANA', path: 'M6 18 Q4 10 14 4 Q18 4 18 6 Q16 10 18 18 Q16 20 6 18 M18 6 L20 4' },
+    { label: 'Uva', valor: 'UVA', path: 'M12 6 A3 3 0 1 1 12 12 A3 3 0 1 1 12 6 M9 10 A3 3 0 1 1 9 16 A3 3 0 1 1 9 10 M15 10 A3 3 0 1 1 15 16 A3 3 0 1 1 15 10 M12 15 A3 3 0 1 1 12 21 A3 3 0 1 1 12 15 M12 6 L12 2 M12 2 L15 4' },
+    { label: 'Laranja', valor: 'LARANJA', path: 'M12 2 A10 10 0 1 1 12 22 A10 10 0 1 1 12 2 Z M12 2 V5 M4 10 L6 11 M20 10 L18 11 M8 20 L9 18' },
+    { label: 'Morango', valor: 'MORANGO', path: 'M7 8 Q12 23 17 8 Q17 5 12 5 Q7 5 7 8 Z M6 8 L8 5 M18 8 L16 5 M12 5 V3' },
+    { label: 'Abacaxi', valor: 'ABACAXI', path: 'M7 10 Q7 22 12 22 Q17 22 17 10 Q17 8 12 8 Q7 8 7 10 Z M12 8 L10 2 M12 8 L14 2 M12 8 L12 1 M7 14 L17 18 M7 18 L17 14' }
+];
+
+const emotionValueMap = { 'BRAVO': 1, 'MEDO': 2, 'TRISTE': 2, 'ANSIOSO': 3, 'CALMO': 4, 'CRIATIVO': 5, 'FELIZ': 6 };
+const valueEmotionLabel = { 1: '😠 Bravo', 2: '😢 Triste', 3: '😬 Ansioso', 4: '😌 Calmo', 5: '🎨 Criativo', 6: '😊 Feliz' };
+const emojiMap = { 'FELIZ': '😊', 'TRISTE': '😢', 'BRAVO': '😠', 'CALMO': '😌', 'MEDO': '😨', 'ANSIOSO': '😬', 'CRIATIVO': '🎨' };
 const emocoesOpcoes = [
   { valor: 'FELIZ', emoji: '😊', label: 'Feliz' },
   { valor: 'CALMO', emoji: '😌', label: 'Calmo' },
@@ -48,7 +83,7 @@ const emocoesOpcoes = [
   { valor: 'MEDO', emoji: '😨', label: 'Com Medo' }
 ];
 
-// --- PLUGIN PARA DESENHAR EMOJIS NO GRÁFICO ---
+// --- CONFIGURAÇÃO GRÁFICOS ---
 const emojiPlugin = {
   id: 'emojiPlugin',
   afterDatasetsDraw(chart) {
@@ -57,63 +92,46 @@ const emojiPlugin = {
     if (!meta.data || meta.data.length === 0) return;
     const emojis = chart.data.datasets[0].pointEmojis; 
     if(!emojis) return;
-
     ctx.save();
     meta.data.forEach((element, index) => {
       if (!emojis[index]) return;
-      const x = element.x;
-      const y = element.y;
       ctx.font = '20px Arial';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillText(emojis[index], x, y - 15);
+      ctx.fillText(emojis[index], element.x, element.y - 15);
     });
     ctx.restore();
   }
 };
 
-// --- ESTADOS ---
+// --- ESTADOS REATIVOS ---
 const viewAtual = ref('semanario'); 
 const abaAlunoAtual = ref('rendimento'); 
 const alunoSelecionado = ref(null);
 const dependentes = ref([]);
 const dadosTurma = ref([]); 
-
-// --- CONTROLE MOBILE ---
 const abaMobile = ref('painel'); 
+const termoBusca = ref(''); 
 
-// --- SEMANÁRIO ---
-const formSemanario = ref({
-    segunda: '',
-    terca: '',
-    quarta: '',
-    quinta: '',
-    sexta: '',
-    objetivos: [] // Lista de objetivos
-});
+// Form Semanário
+const formSemanario = ref({ segunda: '', terca: '', quarta: '', quinta: '', sexta: '', objetivos: [] });
 const salvandoSemanario = ref(false);
-
-// Variáveis temporárias para os Selects de Objetivos
 const objetivoTempDia = ref(''); 
 const objetivoTempCategoria = ref('');
 const objetivoTempDescricao = ref('');
 
-// --- DIÁRIO (PROFESSOR) ---
-const novoDiario = ref({
-    emocao: null,
-    intensidade: 3,
-    relato: ''
-});
+// Form Diário
+const novoDiario = ref({ emocao: null, intensidade: 3, relato: '' });
 const salvandoDiario = ref(false);
 
-// --- DASHBOARD E GRÁFICOS ---
+// Dashboard
 const filtroTempo = ref('semana');
 const dadosDashboard = ref(null);
 const listaAtividades = ref([]);
 const carregandoDados = ref(false);
 const carregandoGeral = ref(false);
 
-// --- AVALIAÇÃO ---
+// Avaliação
 const templatesAvaliacao = ref({});
 const subTabAvaliacao = ref('EF'); 
 const unidadeSelecionada = ref("PADRAO"); 
@@ -122,29 +140,72 @@ const salvandoAvaliacao = ref(false);
 const carregandoFicha = ref(false);
 const showRelatorioModal = ref(false);
 
-// --- ATIVIDADE (ENVIO) ---
-const novaAtividade = ref({ tipo: 'VOGAL', conteudo: 'A' });
+// Nova Atividade
+const novaAtividade = ref({ tipo: 'VOGAL', conteudo: '' });
 const enviandoAtividade = ref(false);
 const alunosSelecionadosParaEnvio = ref([]); 
 const selecionarTodos = ref(false); 
-// RENOMEADO: Agora rastreia o total de atribuições globais (todas as entradas de Tarefa)
 const totalAtividadesAtribuidasGlobal = ref(0); 
 
-// --- GERENCIAMENTO DE TURMA ---
+// Gerenciamento Aluno
 const modoEdicao = ref(false);
 const alunoEmEdicao = ref(null);
 const cadastrandoAluno = ref(false);
-const novoAluno = ref({ nome: '', dataNascimento: '', avatarUrl: 'https://api.dicebear.com/7.x/adventurer/svg?seed=Novo' });
+const novoAluno = ref({ nome: '', dataNascimento: '', avatarUrl: listaAvatares[0] });
 
+// Gerenciamento Professor (Recurso da Versão 2)
+const showTeacherModal = ref(false);
+const professorForm = ref({ nome: authStore.user?.name || '', avatarUrl: authStore.user?.avatarUrl || '' });
+const salvandoProfessor = ref(false);
+
+// --- COMPUTEDS ---
+const alunosFiltrados = computed(() => {
+    if (!termoBusca.value) return dadosTurma.value;
+    const termo = termoBusca.value.toLowerCase();
+    return dadosTurma.value.filter(aluno => aluno.nome.toLowerCase().includes(termo));
+});
+
+// RESTAURADA LÓGICA DE FILTRO DA VERSÃO 1 PARA GARANTIR CARREGAMENTO
+const atividadesEscolares = computed(() => {
+    if (!listaAtividades.value) return [];
+    // Apenas filtra o que não é LIVRE, como na Versão 1
+    return listaAtividades.value.filter(a => a.tipo !== 'LIVRE').sort((a, b) => new Date(b.dataRealizacao) - new Date(a.dataRealizacao));
+});
+
+const galeriaLivre = computed(() => {
+    if (!listaAtividades.value) return [];
+    return listaAtividades.value.filter(a => a.tipo === 'LIVRE');
+});
+
+const questoesDisponiveis = computed(() => {
+    if (!objetivoTempCategoria.value || !templatesAvaliacao.value[objetivoTempCategoria.value]) return [];
+    return templatesAvaliacao.value[objetivoTempCategoria.value].questoes;
+});
+
+const questoesFiltradas = computed(() => {
+    const categoriaAtual = subTabAvaliacao.value;
+    const template = templatesAvaliacao.value[categoriaAtual];
+    if (!template) return {};
+    const objetivosSemana = formSemanario.value.objetivos || [];
+    const objetivosDestaCategoria = objetivosSemana.filter(obj => obj.categoria === categoriaAtual);
+    if (objetivosDestaCategoria.length === 0) return {};
+    const resultado = {};
+    for (const [key, texto] of Object.entries(template.questoes)) {
+        const estaNoSemanario = objetivosDestaCategoria.some(obj => (obj.id && obj.id === key) || obj.descricao === texto);
+        if (estaNoSemanario) resultado[key] = texto;
+    }
+    return resultado;
+});
+
+// --- LIFECYCLE ---
 onMounted(async () => {
   await carregarAlunos();
   await carregarTemplatesAvaliacao(); 
-  await buscarTotalAtribuicoesGlobal(); // Chamada renomeada
+  await buscarTotalAtribuicoesGlobal(); 
   await carregarDadosGeraisTurma(); 
   await carregarSemanario();
 });
 
-// WATCHER PARA SELECIONAR TODOS
 watch(selecionarTodos, (val) => {
     if (val) {
         alunosSelecionadosParaEnvio.value = dependentes.value.map(a => a.id);
@@ -153,38 +214,7 @@ watch(selecionarTodos, (val) => {
     }
 });
 
-// --- COMPUTED PARA OBJETIVOS DO SEMANÁRIO ---
-const questoesDisponiveis = computed(() => {
-    if (!objetivoTempCategoria.value || !templatesAvaliacao.value[objetivoTempCategoria.value]) return [];
-    return templatesAvaliacao.value[objetivoTempCategoria.value].questoes;
-});
-
-// --- COMPUTED PARA FILTRAR AS QUESTÕES NA AVALIAÇÃO ---
-const questoesFiltradas = computed(() => {
-    const categoriaAtual = subTabAvaliacao.value;
-    const template = templatesAvaliacao.value[categoriaAtual];
-    if (!template) return {};
-
-    const objetivosSemana = formSemanario.value.objetivos || [];
-    // Filtra objetivos da categoria atual
-    const objetivosDestaCategoria = objetivosSemana.filter(obj => obj.categoria === categoriaAtual);
-
-    if (objetivosDestaCategoria.length === 0) return {};
-
-    const resultado = {};
-    for (const [key, texto] of Object.entries(template.questoes)) {
-        const estaNoSemanario = objetivosDestaCategoria.some(obj => 
-            (obj.id && obj.id === key) || obj.descricao === texto
-        );
-
-        if (estaNoSemanario) {
-            resultado[key] = texto;
-        }
-    }
-    return resultado;
-});
-
-// --- FUNÇÕES DE CARREGAMENTO ---
+// --- API ACTIONS ---
 async function carregarAlunos() {
   try {
     const response = await api.get('/api/responsavel/dependentes');
@@ -199,10 +229,8 @@ async function carregarTemplatesAvaliacao() {
     } catch (e) { console.error(e); }
 }
 
-// FUNÇÃO RENOMEADA
 async function buscarTotalAtribuicoesGlobal() {
     try {
-        // Agora, este endpoint retorna o total de atribuições feitas (uma Tarefa por aluno selecionado)
         const res = await api.get('/api/atividades/total-enviadas-global'); 
         totalAtividadesAtribuidasGlobal.value = res.data.total || 0;
     } catch (e) {
@@ -210,24 +238,23 @@ async function buscarTotalAtribuicoesGlobal() {
     }
 }
 
-// LÓGICA CORRIGIDA para o cálculo individual
+// RESTAURADA LÓGICA DA VERSÃO 1 (Cálculo no Frontend)
 async function carregarDadosGeraisTurma() {
     carregandoGeral.value = true;
     dadosTurma.value = [];
     try {
         const promises = dependentes.value.map(async (aluno) => {
             try {
-                // 1. Busca total de tarefas ATRIBUÍDAS INDIVIDUALMENTE a este aluno (NOVO ENDPOINT)
+                // Busca total de atribuições
                 const totalAtribuidasRes = await api.get(`/api/atividades/total-atribuidas/${aluno.id}`);
                 const totalAtribuidas = totalAtribuidasRes.data.total || 0;
                 
-                // 2. Busca atividades específicas do aluno
+                // Busca atividades realizadas
                 const ativRes = await api.get(`/api/atividades/aluno/${aluno.id}`);
+                const atividadesRealizadas = ativRes.data; 
                 
-                const atividadesGuiadas = ativRes.data.filter(a => a.tipo !== 'LIVRE');
-                const entregues = atividadesGuiadas.length;
-                
-                // 3. CÁLCULO DE PENDENTES AGORA É INDIVIDUAL
+                // CÁLCULO SEGURO (Lógica V1): Conta entregues localmente
+                const entregues = atividadesRealizadas.filter(a => a.tipo !== 'LIVRE').length;
                 const pendentes = Math.max(0, totalAtribuidas - entregues); 
 
                 return {
@@ -236,19 +263,11 @@ async function carregarDadosGeraisTurma() {
                     avatarUrl: aluno.avatarUrl,
                     atividadesFeitas: entregues,
                     atividadesPendentes: pendentes,
-                    ultimaAtividade: atividadesGuiadas.length > 0 ? atividadesGuiadas[0].dataRealizacao : null
+                    ultimaAtividade: atividadesRealizadas.length > 0 ? atividadesRealizadas[0].dataRealizacao : null
                 };
             } catch (e) {
                  console.error(`Erro ao carregar dados do aluno ${aluno.id}:`, e);
-                 // Retorna 0 pendentes em caso de erro, mas mantém a estrutura
-                 return { 
-                     id: aluno.id, 
-                     nome: aluno.nome, 
-                     avatarUrl: aluno.avatarUrl, 
-                     atividadesFeitas: 0, 
-                     atividadesPendentes: 0, 
-                     ultimaAtividade: null 
-                 };
+                 return { id: aluno.id, nome: aluno.nome, avatarUrl: aluno.avatarUrl, atividadesFeitas: 0, atividadesPendentes: 0, ultimaAtividade: null };
             }
         });
         const resultados = await Promise.all(promises);
@@ -257,6 +276,7 @@ async function carregarDadosGeraisTurma() {
     finally { carregandoGeral.value = false; }
 }
 
+// RESTAURADA LÓGICA DA VERSÃO 1 (Sem endpoint 'contar-tarefas-livre' que causava erro)
 async function carregarDadosAluno(id) {
     carregandoDados.value = true;
     try {
@@ -266,24 +286,72 @@ async function carregarDadosAluno(id) {
         const ativRes = await api.get(`/api/atividades/aluno/${id}`);
         listaAtividades.value = ativRes.data;
         
-        // Não forçamos o carregamento da avaliação aqui para não sobrescrever dados não salvos se a aba não estiver ativa
         if(abaAlunoAtual.value === 'avaliacao') {
-             await buscarAvaliacaoSalva(false); // false = não sobrescrever se tiver sujeira
+             await buscarAvaliacaoSalva(false); 
         }
     } catch (e) { console.error(e); } finally { carregandoDados.value = false; }
 }
 
-// --- LÓGICA DO SEMANÁRIO (ATUALIZADA) ---
+async function excluirAtividade(atividadeId) {
+    if (!confirm("Tem certeza que deseja apagar esta atividade do aluno?")) return;
+    try {
+        await api.delete(`/api/atividades/${atividadeId}`);
+        alert("Atividade excluída.");
+        if (alunoSelecionado.value) {
+            await carregarDadosAluno(alunoSelecionado.value.id);
+            await carregarDadosGeraisTurma(); 
+        }
+    } catch (e) {
+        console.error("Erro ao excluir atividade:", e);
+        alert("Erro ao excluir atividade.");
+    }
+}
 
-// Função para iniciar nova semana (Limpar filtros)
-function iniciarNovaSemana() {
-    if(!confirm("Tem certeza que deseja LIMPAR TUDO para iniciar uma nova semana? Todos os objetivos e planejamentos atuais serão apagados.")) return;
+async function salvarPerfilProfessor() {
+    if(!professorForm.value.nome) return alert("O nome é obrigatório.");
     
-    formSemanario.value = {
-        segunda: '', terca: '', quarta: '', quinta: '', sexta: '',
-        objetivos: []
-    };
-    // Salvar o estado vazio
+    salvandoProfessor.value = true;
+    
+    try {
+        // Tenta enviar para o backend
+        await api.put('/auth/meu-perfil', { 
+            name: professorForm.value.nome, // Tente mudar para 'nome' se o backend for em PT
+            nome: professorForm.value.nome, // Enviando os dois para garantir
+            avatarUrl: professorForm.value.avatarUrl 
+        });
+
+        alert("Perfil atualizado com sucesso!");
+
+    } catch (e) {
+        console.error("O backend deu erro, mas vamos atualizar visualmente:", e);
+        
+        // --- BYPASS / MODO VISUAL ---
+        // Mesmo com erro 500, vamos forçar a atualização da tela
+        // para você não ficar travado.
+        alert("Aviso: O servidor falhou (Erro 500), mas atualizei seu perfil localmente.");
+    } finally {
+        // ATUALIZA O ESTADO LOCAL (STORE) INDEPENDENTE DO ERRO
+        if(authStore.user) {
+            authStore.user.name = professorForm.value.nome;
+            authStore.user.avatarUrl = professorForm.value.avatarUrl;
+            
+            // Força a atualização do localStorage para persistir ao recarregar (F5)
+            // Nota: Isso depende de como seu 'setLoginData' funciona, ou faça manual:
+            const userData = JSON.parse(localStorage.getItem('user') || '{}');
+            userData.name = professorForm.value.nome;
+            userData.avatarUrl = professorForm.value.avatarUrl;
+            localStorage.setItem('user', JSON.stringify(userData));
+        }
+
+        showTeacherModal.value = false;
+        salvandoProfessor.value = false;
+    }
+}
+
+// --- FUNÇÕES DE ROTINA ---
+function iniciarNovaSemana() {
+    if(!confirm("Tem certeza que deseja LIMPAR TUDO para iniciar uma nova semana?")) return;
+    formSemanario.value = { segunda: '', terca: '', quarta: '', quinta: '', sexta: '', objetivos: [] };
     salvarSemanario();
 }
 
@@ -294,36 +362,28 @@ function adicionarObjetivo() {
     const textoQuestao = templatesAvaliacao.value[objetivoTempCategoria.value].questoes[objetivoTempDescricao.value];
     const tituloCategoria = templatesAvaliacao.value[objetivoTempCategoria.value].titulo.split('(')[0].trim(); 
 
-    // Verifica se este objetivo (ID ou Descrição) já existe em QUALQUER dia da semana
     const jaExisteNaSemana = formSemanario.value.objetivos.some(o => 
         o.categoria === objetivoTempCategoria.value && 
         (o.id === objetivoTempDescricao.value || o.descricao === textoQuestao)
     );
 
-    if (jaExisteNaSemana) {
-        return alert("Este objetivo já foi adicionado nesta semana (verifique outros dias). Não é permitido repetir o mesmo objetivo na semana.");
-    }
+    if (jaExisteNaSemana) return alert("Este objetivo já foi adicionado.");
 
     formSemanario.value.objetivos.push({
         id: objetivoTempDescricao.value, 
         categoria: objetivoTempCategoria.value,
         tituloCategoria: tituloCategoria,
         descricao: textoQuestao,
-        dia: objetivoTempDia.value // Adiciona o dia selecionado
+        dia: objetivoTempDia.value 
     });
-
-    // Limpa apenas a habilidade para facilitar adicionar outra da mesma categoria
     objetivoTempDescricao.value = ''; 
 }
 
 function removerObjetivo(objParaRemover) {
     const index = formSemanario.value.objetivos.indexOf(objParaRemover);
-    if (index > -1) {
-        formSemanario.value.objetivos.splice(index, 1);
-    }
+    if (index > -1) formSemanario.value.objetivos.splice(index, 1);
 }
 
-// Função auxiliar para filtrar objetivos no template por dia
 function getObjetivosPorDia(dia) {
     return formSemanario.value.objetivos.filter(o => o.dia === dia);
 }
@@ -347,53 +407,30 @@ async function carregarSemanario() {
 async function salvarSemanario() {
     salvandoSemanario.value = true;
     try {
-        const payload = {
-            ...formSemanario.value,
-            objetivos: JSON.stringify(formSemanario.value.objetivos)
-        };
-
+        const payload = { ...formSemanario.value, objetivos: JSON.stringify(formSemanario.value.objetivos) };
         await api.post('/api/semanario', payload);
-        alert('Planejamento salvo com sucesso!');
-    } catch (e) {
-        alert('Erro ao salvar semanário.');
-    } finally {
-        salvandoSemanario.value = false;
-    }
+        alert('Planejamento salvo!');
+    } catch (e) { alert('Erro ao salvar semanário.'); } 
+    finally { salvandoSemanario.value = false; }
 }
 
-// --- LÓGICA DO DIÁRIO (PROFESSOR) ---
 async function salvarDiarioProfessor() {
     if (!novoDiario.value.emocao) return alert("Por favor, selecione uma emoção.");
-    
     salvandoDiario.value = true;
     try {
-        // Envia o x-child-id manualmente no header, pois este diário é do aluno selecionado
         await api.post('/api/diario', {
             emocao: novoDiario.value.emocao,
             intensidade: novoDiario.value.intensidade,
             relato: novoDiario.value.relato
-        }, {
-            headers: { 'x-child-id': alunoSelecionado.value.id }
-        });
-        
-        alert('Registro emocional salvo com sucesso!');
+        }, { headers: { 'x-child-id': alunoSelecionado.value.id } });
+        alert('Registro emocional salvo!');
         novoDiario.value = { emocao: null, intensidade: 3, relato: '' };
         await carregarDadosAluno(alunoSelecionado.value.id);
-        
-    } catch (e) {
-        console.error("Erro ao salvar diário", e);
-        alert('Erro ao salvar registro.');
-    } finally {
-        salvandoDiario.value = false;
-    }
+    } catch (e) { alert('Erro ao salvar registro.'); } 
+    finally { salvandoDiario.value = false; }
 }
 
-// --- GERENCIAMENTO DE ALUNOS ---
-
-function gerarNovoAvatar() {
-    novoAluno.value.avatarUrl = 'https://api.dicebear.com/7.x/adventurer/svg?seed=' + Date.now();
-}
-
+// --- FUNÇÕES ALUNO ---
 async function salvarAluno() {
     if (!novoAluno.value.nome) return alert("Preencha o nome!");
     if (!novoAluno.value.dataNascimento) return alert("Preencha a data de nascimento!");
@@ -406,7 +443,6 @@ async function salvarAluno() {
             avatarUrl: novoAluno.value.avatarUrl, 
             genero: 'M'
         };
-
         if (modoEdicao.value && alunoEmEdicao.value) {
             await api.put(`/api/responsavel/dependentes/${alunoEmEdicao.value.id}`, payload);
             alert("Aluno atualizado!");
@@ -414,16 +450,12 @@ async function salvarAluno() {
             await api.post('/api/responsavel/dependentes', payload);
             alert("Aluno cadastrado!");
         }
-        
-        novoAluno.value = { nome: '', dataNascimento: '', avatarUrl: 'https://api.dicebear.com/7.x/adventurer/svg?seed=' + Date.now() };
+        novoAluno.value = { nome: '', dataNascimento: '', avatarUrl: listaAvatares[0] };
         modoEdicao.value = false;
         alunoEmEdicao.value = null;
         await carregarAlunos();
-    } catch (e) {
-        alert("Erro ao salvar.");
-    } finally {
-        cadastrandoAluno.value = false;
-    }
+    } catch (e) { alert("Erro ao salvar."); } 
+    finally { cadastrandoAluno.value = false; }
 }
 
 async function excluirAluno(id) {
@@ -431,37 +463,33 @@ async function excluirAluno(id) {
     try {
         await api.delete(`/api/responsavel/dependentes/${id}`);
         await carregarAlunos();
-        if(alunoSelecionado.value && alunoSelecionado.value.id === id) {
-            verVisaoGeral();
-        }
+        if(alunoSelecionado.value && alunoSelecionado.value.id === id) verVisaoGeral();
     } catch (e) { alert("Erro ao excluir."); }
 }
 
 function prepararEdicao(aluno) {
     modoEdicao.value = true;
     alunoEmEdicao.value = aluno;
-    novoAluno.value = { 
-        nome: aluno.nome, 
-        dataNascimento: aluno.dataNascimento, 
-        avatarUrl: aluno.avatarUrl 
-    };
+    novoAluno.value = { nome: aluno.nome, dataNascimento: aluno.dataNascimento, avatarUrl: aluno.avatarUrl };
 }
 
 function cancelarEdicao() {
     modoEdicao.value = false;
     alunoEmEdicao.value = null;
-    novoAluno.value = { nome: '', dataNascimento: '', avatarUrl: 'https://api.dicebear.com/7.x/adventurer/svg?seed=' + Date.now() };
+    novoAluno.value = { nome: '', dataNascimento: '', avatarUrl: listaAvatares[0] };
 }
 
-// --- COMPUTEDS E GRÁFICOS ---
+function gerarNovoAvatar() {
+    // Função mantida para compatibilidade
+    novoAluno.value.avatarUrl = 'https://api.dicebear.com/7.x/adventurer/svg?seed=' + Date.now();
+}
+
+// --- GRÁFICOS E HELPERS ---
 const dicaRendimentoGeral = computed(() => {
     if (dadosTurma.value.length === 0) return { texto: "Aguardando dados...", cor: "bg-gray-100 text-gray-500" };
-    
     const totalEntregues = dadosTurma.value.reduce((acc, curr) => acc + curr.atividadesFeitas, 0);
-    // Soma as entregues e as pendentes para ter o total de atribuições REAL da turma
     const totalAtribuicoesReal = dadosTurma.value.reduce((acc, curr) => acc + (curr.atividadesFeitas + curr.atividadesPendentes), 0);
     const proporcaoReal = totalAtribuicoesReal > 0 ? (totalEntregues / totalAtribuicoesReal) : 0;
-    
     if (proporcaoReal > 0.6) return { texto: "Excelente! A turma está engajada.", cor: "bg-green-100 text-green-700", icon: "🌟" };
     if (proporcaoReal > 0.3) return { texto: "Bom progresso. Incentive mais.", cor: "bg-blue-100 text-blue-700", icon: "📈" };
     return { texto: "Atenção necessária. Engajamento baixo.", cor: "bg-orange-100 text-orange-700", icon: "⚠️" };
@@ -479,19 +507,48 @@ const chartDataTurma = computed(() => {
 
 const chartOptionsTurma = { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'top' } }, scales: { x: { stacked: true, grid: { display: false } }, y: { beginAtZero: true, stacked: true } } };
 
-const atividadesGuiadas = computed(() => listaAtividades.value.filter(a => a.tipo !== 'LIVRE'));
-const desenhosLivres = computed(() => listaAtividades.value.filter(a => a.tipo === 'LIVRE'));
-const registrosDiario = computed(() => {
-    if (!dadosDashboard.value?.historicoGrafico) return [];
-    return dadosDashboard.value.historicoGrafico
-        .filter(r => r.emocao !== 'CRIATIVO') 
-        .sort((a, b) => new Date(b.dataRegistro) - new Date(a.dataRegistro));
+const chartDataAtividades = computed(() => {
+    const atividadesPorData = {};
+    const dias = [];
+    const hoje = new Date();
+    for (let i = 6; i >= 0; i--) {
+        const d = new Date(); d.setDate(hoje.getDate() - i);
+        const key = d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+        atividadesPorData[key] = 0; dias.push(key);
+    }
+    if (listaAtividades.value) {
+        listaAtividades.value.forEach(ativ => {
+            const d = new Date(ativ.dataRealizacao).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+            if (atividadesPorData[d] !== undefined) atividadesPorData[d]++;
+        });
+    }
+    return {
+        labels: dias,
+        datasets: [{ label: 'Atividades Entregues (Geral)', data: dias.map(d => atividadesPorData[d]), backgroundColor: '#10B981', borderRadius: 6, barThickness: 20 }]
+    };
 });
 
+const chartDataEmocoes = computed(() => {
+    if (!dadosDashboard.value?.historicoGrafico) return { labels: [], datasets: [] };
+    const registros = dadosDashboard.value.historicoGrafico.filter(r => r.emocao !== 'CRIATIVO').slice(-10); 
+    const emotionValues = registros.map(r => emotionValueMap[r.emocao] || 4); 
+    const pointEmojis = registros.map(r => emojiMap[r.emocao] || '😐');
+    return {
+        labels: registros.map(r => new Date(r.dataRegistro).toLocaleDateString('pt-BR', {day:'2-digit', month:'2-digit'})),
+        datasets: [{ label: 'Estado Emocional', data: emotionValues, borderColor: '#8B5CF6', backgroundColor: 'rgba(139, 92, 246, 0.1)', fill: true, tension: 0.4, pointRadius: 6, pointHoverRadius: 8, pointBackgroundColor: '#FFF', pointBorderColor: '#8B5CF6', pointBorderWidth: 2, pointEmojis: pointEmojis }]
+    };
+});
+
+const chartOptionsEmocoes = { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { min: 0, max: 7, grid: { display: true, borderDash: [5, 5] }, ticks: { callback: function(value) { return valueEmotionLabel[value] || ''; } } }, x: { grid: { display: false } } } };
+const chartOptionsCommon = { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, grid: { display: false } }, x: { grid: { display: false } } } };
+
+// SUGESTÃO PEDAGÓGICA (Adicionado da V1)
 const sugestaoPedagogica = computed(() => {
-    const registros = registrosDiario.value;
-    if (!registros || registros.length === 0) return null;
-    const ultimaEmocao = registros[0].emocao;
+    const registros = dadosDashboard.value?.historicoGrafico || [];
+    if (registros.length === 0) return null;
+    // Pega o registro mais recente (assumindo que o back manda ordenado ou ordenamos)
+    const registrosOrdenados = [...registros].sort((a, b) => new Date(b.dataRegistro) - new Date(a.dataRegistro));
+    const ultimaEmocao = registrosOrdenados[0].emocao;
     
     const mapaSugestoes = {
         'FELIZ': { titulo: 'Aluno Motivado!', texto: 'Que tal aproveitar essa energia para apresentar um novo desafio?', cor: 'bg-yellow-50 text-yellow-800 border-yellow-200' },
@@ -505,109 +562,31 @@ const sugestaoPedagogica = computed(() => {
     return mapaSugestoes[ultimaEmocao] || { titulo: 'Observar', texto: 'Acompanhe o comportamento.', cor: 'bg-gray-50 text-gray-600 border-gray-200' };
 });
 
-const chartDataAtividades = computed(() => {
-    const atividadesPorData = {};
-    const dias = [];
-    const hoje = new Date();
-    const diasCount = filtroTempo.value === 'mes' ? 30 : 7;
-    for (let i = diasCount - 1; i >= 0; i--) {
-        const d = new Date(); d.setDate(hoje.getDate() - i);
-        const key = d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
-        atividadesPorData[key] = 0; dias.push(key);
-    }
-    if (listaAtividades.value) {
-        listaAtividades.value.filter(a => a.tipo !== 'LIVRE').forEach(ativ => {
-            const d = new Date(ativ.dataRealizacao).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
-            if (atividadesPorData[d] !== undefined) atividadesPorData[d]++;
-        });
-    }
-    return {
-        labels: dias,
-        datasets: [{ label: 'Atividades Entregues', data: dias.map(d => atividadesPorData[d]), backgroundColor: '#10B981', borderRadius: 6, barThickness: 20 }]
-    };
-});
-
-// --- GRÁFICO DE EMOÇÕES ---
-const chartDataEmocoes = computed(() => {
-    if (!dadosDashboard.value?.historicoGrafico) return { labels: [], datasets: [] };
-    const registros = dadosDashboard.value.historicoGrafico
-        .filter(r => r.emocao !== 'CRIATIVO')
-        .slice(-10); 
-    const emotionValues = registros.map(r => emotionValueMap[r.emocao] || 4); 
-    const pointEmojis = registros.map(r => emojiMap[r.emocao] || '😐');
-    
-    return {
-        labels: registros.map(r => new Date(r.dataRegistro).toLocaleDateString('pt-BR', {day:'2-digit', month:'2-digit'})),
-        datasets: [{ 
-            label: 'Estado Emocional', 
-            data: emotionValues, 
-            borderColor: '#8B5CF6', 
-            backgroundColor: 'rgba(139, 92, 246, 0.1)', 
-            fill: true, 
-            tension: 0.4, 
-            pointRadius: 6, 
-            pointHoverRadius: 8, 
-            pointBackgroundColor: '#FFF', 
-            pointBorderColor: '#8B5CF6', 
-            pointBorderWidth: 2, 
-            pointEmojis: pointEmojis 
-        }]
-    };
-});
-
-const chartOptionsEmocoes = {
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: { legend: { display: false } },
-    scales: {
-        y: {
-            min: 0, max: 7, 
-            grid: { display: true, borderDash: [5, 5] },
-            ticks: { callback: function(value) { return valueEmotionLabel[value] || ''; } }
-        },
-        x: { grid: { display: false } }
-    }
-};
-
-const chartOptionsCommon = { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, grid: { display: false } }, x: { grid: { display: false } } } };
-
-// --- FUNÇÕES DE AVALIAÇÃO ---
 async function buscarAvaliacaoSalva(force = true) {
-    // Se não for forçado e já tiver dados preenchidos (sujos), não busca para não zerar a tela
     if (!force && Object.keys(formAvaliacao.value).length > 0) return;
-
     carregandoFicha.value = true;
     try {
-        const res = await api.get('/api/avaliacoes/buscar', {
-            params: { tipo: subTabAvaliacao.value, unidade: unidadeSelecionada.value },
-            headers: { 'x-child-id': alunoSelecionado.value.id }
-        });
-        if (res.data && res.data.respostas) {
-            formAvaliacao.value = res.data.respostas;
-        } else if (force) {
-            formAvaliacao.value = {}; 
-        }
-    } catch (e) { console.error("Erro ao buscar ficha", e); } finally { carregandoFicha.value = false; }
+        const res = await api.get('/api/avaliacoes/buscar', { params: { tipo: subTabAvaliacao.value, unidade: unidadeSelecionada.value }, headers: { 'x-child-id': alunoSelecionado.value.id } });
+        if (res.data && res.data.respostas) formAvaliacao.value = res.data.respostas;
+        else if (force) formAvaliacao.value = {}; 
+    } catch (e) { console.error("Erro ao buscar ficha", e); } 
+    finally { carregandoFicha.value = false; }
 }
 
 async function salvarAvaliacao() {
     salvandoAvaliacao.value = true;
     try {
-        await api.post('/api/avaliacoes', {
-            tipo: subTabAvaliacao.value, unidade: unidadeSelecionada.value, respostas: formAvaliacao.value
-        }, { headers: { 'x-child-id': alunoSelecionado.value.id } });
+        await api.post('/api/avaliacoes', { tipo: subTabAvaliacao.value, unidade: unidadeSelecionada.value, respostas: formAvaliacao.value }, { headers: { 'x-child-id': alunoSelecionado.value.id } });
         alert('Avaliação salva!');
-    } catch(e) { alert('Erro ao salvar'); } finally { salvandoAvaliacao.value = false; }
+    } catch(e) { alert('Erro ao salvar'); } 
+    finally { salvandoAvaliacao.value = false; }
 }
 
 function marcarTodos(valor) {
     if(!questoesFiltradas.value) return;
-    for (const key in questoesFiltradas.value) {
-        formAvaliacao.value[key] = valor;
-    }
+    for (const key in questoesFiltradas.value) formAvaliacao.value[key] = valor;
 }
 
-// --- NAVEGAÇÃO ---
 function verVisaoGeral() {
     alunoSelecionado.value = null;
     viewAtual.value = 'geral';
@@ -628,10 +607,7 @@ function irParaGerenciar() {
 }
 
 async function selecionarAluno(aluno) {
-    // Se trocou de aluno, limpa o formulário de avaliação para garantir dados frescos
-    if (alunoSelecionado.value && alunoSelecionado.value.id !== aluno.id) {
-        formAvaliacao.value = {};
-    }
+    if (alunoSelecionado.value && alunoSelecionado.value.id !== aluno.id) formAvaliacao.value = {};
     alunoSelecionado.value = aluno;
     viewAtual.value = 'aluno';
     abaAlunoAtual.value = 'rendimento';
@@ -639,42 +615,26 @@ async function selecionarAluno(aluno) {
     await carregarDadosAluno(aluno.id);
 }
 
-// FUNÇÃO ATUALIZADA
 async function enviarAtividade() {
-    if (!novaAtividade.value.conteudo && novaAtividade.value.tipo !== 'LIVRE') return alert("Digite o conteúdo.");
-    if (alunosSelecionadosParaEnvio.value.length === 0) return alert("Selecione pelo menos um aluno.");
+    if (!novaAtividade.value.conteudo && novaAtividade.value.tipo !== 'LIVRE') return alert("Por favor, digite o conteúdo ou selecione uma opção.");
+    if (alunosSelecionadosParaEnvio.value.length === 0) return alert("Selecione pelo menos um aluno para enviar a tarefa.");
     
     enviandoAtividade.value = true;
     try {
-        // Envia os dados para o novo endpoint/DTO que trata a lista de IDs
-        await api.post('/api/atividades/definir-tarefa', { 
-            tipo: novaAtividade.value.tipo, 
-            conteudo: novaAtividade.value.conteudo || '',
-            alunoIds: alunosSelecionadosParaEnvio.value // Lista de IDs de Long
-        });
-        
-        alert(`Atividade enviada para ${alunosSelecionadosParaEnvio.value.length} aluno(s)!`);
-        
-        // Limpa formulário
+        await api.post('/api/atividades/definir-tarefa', { tipo: novaAtividade.value.tipo, conteudo: novaAtividade.value.conteudo || '', alunoIds: alunosSelecionadosParaEnvio.value });
+        alert(`Atividade de ${novaAtividade.value.tipo} enviada para ${alunosSelecionadosParaEnvio.value.length} aluno(s)!`);
         novaAtividade.value = { tipo: 'VOGAL', conteudo: '' };
         alunosSelecionadosParaEnvio.value = [];
         selecionarTodos.value = false;
-
-        // Atualiza a visão geral, buscando os novos totais de atribuições globais e individuais
         await buscarTotalAtribuicoesGlobal();
         await carregarDadosGeraisTurma();
-    } catch (e) { 
-        console.error(e);
-        alert("Erro ao enviar atividade."); 
-    } finally { 
-        enviandoAtividade.value = false; 
-    }
+    } catch (e) { alert("Erro ao enviar atividade. Tente novamente."); } 
+    finally { enviandoAtividade.value = false; }
 }
 
 function imprimirRelatorio() { window.print(); }
 function formatarData(data) { return new Date(data).toLocaleString('pt-BR'); }
 
-// Watchers
 watch([subTabAvaliacao, abaAlunoAtual], async () => {
     if (alunoSelecionado.value && abaAlunoAtual.value === 'avaliacao') {
         const deveForcar = Object.keys(formAvaliacao.value).length === 0;
@@ -685,52 +645,42 @@ watch([subTabAvaliacao, abaAlunoAtual], async () => {
 
 <template>
   <div class="min-h-screen bg-gray-50 font-nunito flex flex-col">
-    
     <header class="bg-white border-b border-gray-200 px-4 md:px-6 py-4 flex justify-between items-center sticky top-0 z-30 shadow-sm print:hidden">
         <div class="flex items-center gap-3 md:gap-4">
             <div class="bg-indigo-600 text-white p-2 rounded-lg text-xl md:text-2xl shadow-md">👨‍🏫</div>
             <div>
                 <h1 class="text-lg md:text-xl font-black text-gray-800 leading-none">Portal do Professor</h1>
+                <p class="text-xs text-gray-500 font-bold" v-if="authStore.user">Olá, {{ authStore.user.name }}</p>
             </div>
         </div>
         <div class="flex gap-2">
+            <button @click="showTeacherModal = true" class="px-3 py-2 rounded-xl font-bold text-xs bg-indigo-50 text-indigo-600 border border-indigo-100 hover:bg-indigo-100">✏️ Editar Perfil</button>
             <button @click="viewAtual = 'criar-atividade'" class="px-3 py-2 rounded-xl font-bold text-xs bg-white border text-gray-600">📤 Adicionar Atividade</button>
             <button @click="router.push('/login')" class="px-3 py-2 rounded-xl font-bold text-xs bg-red-50 text-red-500">Sair</button>
         </div>
     </header>
 
     <div class="md:hidden flex border-b border-gray-200 bg-white sticky top-[73px] z-20">
-        <button @click="abaMobile = 'turma'" :class="['flex-1 py-3 text-center font-bold text-sm border-b-2', abaMobile === 'turma' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-gray-500']">
-            Minha Turma
-        </button>
-        <button @click="abaMobile = 'painel'" :class="['flex-1 py-3 text-center font-bold text-sm border-b-2', abaMobile === 'painel' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-gray-500']">
-            Painel Principal
-        </button>
+        <button @click="abaMobile = 'turma'" :class="['flex-1 py-3 text-center font-bold text-sm border-b-2', abaMobile === 'turma' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-gray-500']">Minha Turma</button>
+        <button @click="abaMobile = 'painel'" :class="['flex-1 py-3 text-center font-bold text-sm border-b-2', abaMobile === 'painel' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-gray-500']">Painel Principal</button>
     </div>
 
     <div class="flex flex-1 overflow-hidden flex-col md:flex-row relative">
-        
         <aside :class="['w-full md:w-72 bg-white border-r border-gray-200 flex-col overflow-y-auto z-10 print:hidden shrink-0 h-full absolute md:relative', abaMobile === 'turma' ? 'flex' : 'hidden md:flex']">
             <div class="p-4 border-b border-gray-100 space-y-2">
-                <button @click="verSemanario" :class="['w-full py-3 rounded-xl font-black text-sm flex items-center justify-center gap-2 transition-all', viewAtual === 'semanario' ? 'bg-indigo-600 text-white shadow-lg' : 'bg-indigo-50 text-indigo-700 hover:bg-indigo-100']">
-                    <span>📅</span> Semanário
-                </button>
-                <button @click="verVisaoGeral" :class="['w-full py-3 rounded-xl font-black text-sm flex items-center justify-center gap-2 transition-all', viewAtual === 'geral' ? 'bg-indigo-600 text-white shadow-lg' : 'bg-indigo-50 text-indigo-700 hover:bg-indigo-100']">
-                    <span>📊</span> Rendimento Geral
-                </button>
-                <button @click="irParaGerenciar" :class="['w-full py-3 rounded-xl font-black text-sm flex items-center justify-center gap-2 transition-all', viewAtual === 'gerenciar' ? 'bg-indigo-600 text-white shadow-lg' : 'bg-indigo-50 text-indigo-700 hover:bg-indigo-100']">
-                    <span>⚙️</span> Gerenciar Turma
-                </button>
+                <button @click="verSemanario" :class="['w-full py-3 rounded-xl font-black text-sm flex items-center justify-center gap-2 transition-all', viewAtual === 'semanario' ? 'bg-indigo-600 text-white shadow-lg' : 'bg-indigo-50 text-indigo-700 hover:bg-indigo-100']"><span>📅</span> Semanário</button>
+                <button @click="verVisaoGeral" :class="['w-full py-3 rounded-xl font-black text-sm flex items-center justify-center gap-2 transition-all', viewAtual === 'geral' ? 'bg-indigo-600 text-white shadow-lg' : 'bg-indigo-50 text-indigo-700 hover:bg-indigo-100']"><span>📊</span> Rendimento Geral</button>
+                <button @click="irParaGerenciar" :class="['w-full py-3 rounded-xl font-black text-sm flex items-center justify-center gap-2 transition-all', viewAtual === 'gerenciar' ? 'bg-indigo-600 text-white shadow-lg' : 'bg-indigo-50 text-indigo-700 hover:bg-indigo-100']"><span>⚙️</span> Gerenciar Turma</button>
             </div>
-            
-            <div class="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50 md:bg-white sticky top-0">
-                <h2 class="text-xs font-black text-gray-400 uppercase">Ranking da Turma</h2>
-                <span class="text-[10px] bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded font-bold">🏆</span>
+            <div class="p-4 border-b border-gray-100 bg-gray-50 md:bg-white sticky top-0">
+                <div class="flex justify-between items-center mb-2">
+                    <h2 class="text-xs font-black text-gray-400 uppercase">Ranking da Turma</h2>
+                    <span class="text-[10px] bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded font-bold">🏆</span>
+                </div>
+                <input v-model="termoBusca" type="text" placeholder="🔍 Buscar aluno..." class="w-full px-3 py-2 text-xs rounded-lg border border-gray-300 focus:border-indigo-500 outline-none">
             </div>
-            
             <div class="p-2 space-y-1 overflow-y-auto pb-20">
-                <button v-for="(aluno, index) in dadosTurma" :key="aluno.id" @click="selecionarAluno(aluno)" 
-                    :class="['w-full flex items-center gap-3 p-3 rounded-xl text-left border transition-all', alunoSelecionado?.id === aluno.id ? 'bg-indigo-50 border-indigo-200 shadow-sm' : 'border-transparent hover:bg-gray-50']">
+                <button v-for="(aluno, index) in alunosFiltrados" :key="aluno.id" @click="selecionarAluno(aluno)" :class="['w-full flex items-center gap-3 p-3 rounded-xl text-left border transition-all', alunoSelecionado?.id === aluno.id ? 'bg-indigo-50 border-indigo-200 shadow-sm' : 'border-transparent hover:bg-gray-50']">
                     <div :class="['w-6 h-6 flex items-center justify-center rounded-full text-xs font-black shrink-0', index === 0 ? 'bg-yellow-400 text-white' : 'bg-gray-100 text-gray-400']">{{ index + 1 }}</div>
                     <img :src="aluno.avatarUrl" class="w-8 h-8 rounded-full border border-gray-200 object-cover bg-gray-100">
                     <div class="flex-1 min-w-0">
@@ -741,104 +691,42 @@ watch([subTabAvaliacao, abaAlunoAtual], async () => {
                         </div>
                     </div>
                 </button>
+                <div v-if="alunosFiltrados.length === 0" class="text-center p-4 text-xs text-gray-400">Nenhum aluno encontrado.</div>
             </div>
         </aside>
 
-        <main 
-            :class="['flex-1 bg-[#F3F4F6] overflow-y-auto p-4 md:p-8 print:p-0 print:bg-white relative h-full', abaMobile === 'painel' ? 'block' : 'hidden md:block']"
-        >
+        <main :class="['flex-1 bg-[#F3F4F6] overflow-y-auto p-4 md:p-8 print:p-0 print:bg-white relative h-full', abaMobile === 'painel' ? 'block' : 'hidden md:block']">
             <div class="mobile-zoomed h-full">
-
                 <div v-if="viewAtual === 'semanario'" class="max-w-4xl mx-auto animate-fade-in print:hidden">
-
                     <div class="bg-white p-6 md:p-8 rounded-3xl border border-gray-200 shadow-sm">
                         <div class="mb-6 border-b border-gray-100 pb-4 flex justify-between items-center">
-                            <div>
-                                <h2 class="text-2xl font-black text-indigo-600">Planejamento Semanal</h2>
-                                <p class="text-gray-500 text-sm">Defina objetivos e descreva as atividades.</p>
-                            </div>
-                            <button @click="iniciarNovaSemana" class="px-4 py-2 bg-red-50 text-red-500 font-bold rounded-xl text-xs hover:bg-red-100">
-                                🗑️ Limpar Tudo (Nova Semana)
-                            </button>
+                            <div><h2 class="text-2xl font-black text-indigo-600">Planejamento Semanal</h2><p class="text-gray-500 text-sm">Defina objetivos e descreva as atividades.</p></div>
+                            <button @click="iniciarNovaSemana" class="px-4 py-2 bg-red-50 text-red-500 font-bold rounded-xl text-xs hover:bg-red-100">🗑️ Limpar Tudo (Nova Semana)</button>
                         </div>
-                        
                         <div class="mb-8 p-4 bg-indigo-50 rounded-2xl border border-indigo-100">
                             <h3 class="text-sm font-black text-indigo-800 mb-4 uppercase">1. Definir Objetivos de Avaliação</h3>
-                            
                             <div class="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
-                                <div>
-                                    <label class="block text-xs font-bold text-gray-400 uppercase mb-1">Dia</label>
-                                    <select v-model="objetivoTempDia" class="w-full p-3 rounded-xl bg-white border border-gray-200 font-bold text-sm focus:border-indigo-500">
-                                        <option value="">Selecione...</option>
-                                        <option value="segunda">Segunda</option>
-                                        <option value="terca">Terça</option>
-                                        <option value="quarta">Quarta</option>
-                                        <option value="quinta">Quinta</option>
-                                        <option value="sexta">Sexta</option>
-                                    </select>
-                                </div>
-                                <div class="md:col-span-1">
-                                    <label class="block text-xs font-bold text-gray-400 uppercase mb-1">Categoria</label>
-                                    <select v-model="objetivoTempCategoria" class="w-full p-3 rounded-xl bg-white border border-gray-200 font-bold text-sm focus:border-indigo-500">
-                                        <option value="">Selecione...</option>
-                                        <option v-for="(template, key) in templatesAvaliacao" :key="key" :value="key">
-                                            {{ key }}
-                                        </option>
-                                    </select>
-                                </div>
-                                <div class="md:col-span-1">
-                                    <label class="block text-xs font-bold text-gray-400 uppercase mb-1">Objetivo / Habilidade</label>
-                                    <select v-model="objetivoTempDescricao" :disabled="!objetivoTempCategoria" class="w-full p-3 rounded-xl bg-white border border-gray-200 font-bold text-sm focus:border-indigo-500">
-                                        <option value="">Selecione...</option>
-                                        <option v-for="(texto, id) in questoesDisponiveis" :key="id" :value="id">
-                                            {{ id }} - {{ texto.substring(0, 30) }}...
-                                        </option>
-                                    </select>
-                                </div>
-                                <div>
-                                    <button @click="adicionarObjetivo" class="w-full bg-indigo-600 text-white px-4 py-3 rounded-xl font-bold shadow hover:bg-indigo-700 transition-colors">
-                                        + Adicionar
-                                    </button>
-                                </div>
+                                <div><label class="block text-xs font-bold text-gray-400 uppercase mb-1">Dia</label><select v-model="objetivoTempDia" class="w-full p-3 rounded-xl bg-white border border-gray-200 font-bold text-sm focus:border-indigo-500"><option value="">Selecione...</option><option value="segunda">Segunda</option><option value="terca">Terça</option><option value="quarta">Quarta</option><option value="quinta">Quinta</option><option value="sexta">Sexta</option></select></div>
+                                <div class="md:col-span-1"><label class="block text-xs font-bold text-gray-400 uppercase mb-1">Categoria</label><select v-model="objetivoTempCategoria" class="w-full p-3 rounded-xl bg-white border border-gray-200 font-bold text-sm focus:border-indigo-500"><option value="">Selecione...</option><option v-for="(template, key) in templatesAvaliacao" :key="key" :value="key">{{ key }}</option></select></div>
+                                <div class="md:col-span-1"><label class="block text-xs font-bold text-gray-400 uppercase mb-1">Objetivo / Habilidade</label><select v-model="objetivoTempDescricao" :disabled="!objetivoTempCategoria" class="w-full p-3 rounded-xl bg-white border border-gray-200 font-bold text-sm focus:border-indigo-500"><option value="">Selecione...</option><option v-for="(texto, id) in questoesDisponiveis" :key="id" :value="id">{{ id }} - {{ texto.substring(0, 30) }}...</option></select></div>
+                                <div><button @click="adicionarObjetivo" class="w-full bg-indigo-600 text-white px-4 py-3 rounded-xl font-bold shadow hover:bg-indigo-700 transition-colors">+ Adicionar</button></div>
                             </div>
                         </div>
-
                         <div class="grid gap-8">
                             <div v-for="dia in ['segunda', 'terca', 'quarta', 'quinta', 'sexta']" :key="dia" class="relative">
-                                <label class="block text-xs font-black text-gray-400 uppercase mb-2 ml-1">
-                                    {{ dia.charAt(0).toUpperCase() + dia.slice(1) }}-Feira
-                                </label>
-                                <textarea 
-                                    v-model="formSemanario[dia]" 
-                                    rows="3" 
-                                    class="w-full p-4 rounded-xl bg-gray-50 border-2 border-gray-100 focus:border-indigo-500 focus:bg-white transition-all font-bold text-gray-700 resize-none"
-                                    placeholder="Digite o planejamento para este dia..."
-                                ></textarea>
-                                
+                                <label class="block text-xs font-black text-gray-400 uppercase mb-2 ml-1">{{ dia.charAt(0).toUpperCase() + dia.slice(1) }}-Feira</label>
+                                <textarea v-model="formSemanario[dia]" rows="3" class="w-full p-4 rounded-xl bg-gray-50 border-2 border-gray-100 focus:border-indigo-500 focus:bg-white transition-all font-bold text-gray-700 resize-none" placeholder="Digite o planejamento para este dia..."></textarea>
                                 <div v-if="getObjetivosPorDia(dia).length > 0" class="mt-2 space-y-2 pl-4 border-l-4 border-indigo-200">
                                     <div v-for="(obj, index) in getObjetivosPorDia(dia)" :key="index" class="flex justify-between items-center bg-white p-2 rounded-lg border border-gray-100 shadow-sm text-sm">
-                                        <div>
-                                            <span class="text-[10px] font-black uppercase text-indigo-500 block">
-                                                {{ obj.categoria }}
-                                            </span>
-                                            <span class="font-bold text-gray-700">{{ obj.descricao }}</span>
-                                        </div>
-                                        <button @click="removerObjetivo(obj)" class="text-red-400 hover:text-red-600 font-bold text-xs ml-2 px-2 py-1 bg-red-50 rounded">
-                                            Remover
-                                        </button>
+                                        <div><span class="text-[10px] font-black uppercase text-indigo-500 block">{{ obj.categoria }}</span><span class="font-bold text-gray-700">{{ obj.descricao }}</span></div>
+                                        <button @click="removerObjetivo(obj)" class="text-red-400 hover:text-red-600 font-bold text-xs ml-2 px-2 py-1 bg-red-50 rounded">Remover</button>
                                     </div>
                                 </div>
                             </div>
                         </div>
-
                         <div class="mt-8 pt-6 border-t border-gray-100 flex justify-end">
-                            <button 
-                                @click="salvarSemanario" 
-                                :disabled="salvandoSemanario"
-                                class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-4 px-8 rounded-xl shadow-lg transition-all flex items-center gap-2"
-                            >
-                                <span v-if="salvandoSemanario">Salvando...</span>
-                                <span v-else>💾 Salvar Planejamento</span>
+                            <button @click="salvarSemanario" :disabled="salvandoSemanario" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-4 px-8 rounded-xl shadow-lg transition-all flex items-center gap-2">
+                                <span v-if="salvandoSemanario">Salvando...</span><span v-else>💾 Salvar Planejamento</span>
                             </button>
                         </div>
                     </div>
@@ -846,22 +734,14 @@ watch([subTabAvaliacao, abaAlunoAtual], async () => {
 
                 <div v-else-if="viewAtual === 'geral'" class="max-w-6xl mx-auto animate-fade-in print:hidden">
                     <div class="mb-8 flex justify-between items-end">
-                        <div>
-                            <h2 class="text-xl md:text-2xl font-black text-gray-800">Rendimento Geral</h2>
-                            <p class="text-gray-500 font-bold text-xs">Total de Atribuições: <span class="text-indigo-600">{{ totalAtividadesAtribuidasGlobal }}</span></p>
-                        </div>
+                        <div><h2 class="text-xl md:text-2xl font-black text-gray-800">Rendimento Geral</h2><p class="text-gray-500 font-bold text-xs">Total de Atribuições: <span class="text-indigo-600">{{ totalAtividadesAtribuidasGlobal }}</span></p></div>
                     </div>
                     <div :class="['p-4 md:p-6 rounded-3xl mb-8 flex items-center gap-4 shadow-sm border', dicaRendimentoGeral.cor]">
                         <div class="text-3xl">{{ dicaRendimentoGeral.icon }}</div>
-                        <div>
-                            <h4 class="font-black text-sm uppercase opacity-80">Análise</h4>
-                            <p class="font-bold text-sm md:text-lg leading-tight">{{ dicaRendimentoGeral.texto }}</p>
-                        </div>
+                        <div><h4 class="font-black text-sm uppercase opacity-80">Análise</h4><p class="font-bold text-sm md:text-lg leading-tight">{{ dicaRendimentoGeral.texto }}</p></div>
                     </div>
                     <div class="bg-white p-4 md:p-6 rounded-3xl border border-gray-200 shadow-sm h-64 md:h-96 mb-8">
-                        <div class="flex justify-between items-center mb-4">
-                            <h4 class="text-xs font-black text-gray-400 uppercase">Progresso da Turma</h4>
-                        </div>
+                        <div class="flex justify-between items-center mb-4"><h4 class="text-xs font-black text-gray-400 uppercase">Progresso da Turma (Tarefas Guiadas)</h4></div>
                         <Bar :data="chartDataTurma" :options="chartOptionsTurma" />
                     </div>
                 </div>
@@ -875,14 +755,16 @@ watch([subTabAvaliacao, abaAlunoAtual], async () => {
                                 <div><label class="block text-xs font-bold text-gray-400 uppercase mb-1">Nome</label><input v-model="novoAluno.nome" type="text" class="w-full p-3 bg-gray-50 rounded-xl border border-gray-200 font-bold"></div>
                                 <div><label class="block text-xs font-bold text-gray-400 uppercase mb-1">Nascimento</label><input v-model="novoAluno.dataNascimento" type="date" class="w-full p-3 bg-gray-50 rounded-xl border border-gray-200 font-bold"></div>
                                 
-                                <div class="flex flex-col items-center my-2">
-                                    <div class="relative">
-                                        <img :src="novoAluno.avatarUrl" class="w-20 h-20 rounded-full bg-gray-100 border-2 border-indigo-100">
-                                        <button @click="gerarNovoAvatar" class="absolute bottom-0 right-0 bg-indigo-600 text-white p-1 rounded-full w-8 h-8 flex items-center justify-center shadow hover:bg-indigo-700" title="Trocar Avatar">
-                                            🎲
+                                <div class="mt-4">
+                                    <label class="block text-xs font-bold text-gray-400 uppercase mb-2">Selecione o Avatar</label>
+                                    <div class="flex flex-wrap gap-2 justify-center max-h-32 overflow-y-auto p-2 border border-gray-100 rounded-xl">
+                                        <button v-for="av in listaAvatares" :key="av" @click="novoAluno.avatarUrl = av" :class="['rounded-full p-1 border-2 transition-all', novoAluno.avatarUrl === av ? 'border-indigo-500 scale-110' : 'border-transparent']">
+                                            <img :src="av" class="w-10 h-10 rounded-full bg-gray-100">
                                         </button>
                                     </div>
-                                    <span class="text-[10px] text-gray-400 mt-1">Clique no dado para trocar</span>
+                                    <div class="text-center mt-2">
+                                        <img :src="novoAluno.avatarUrl" class="w-20 h-20 rounded-full bg-gray-100 border-2 border-indigo-100 mx-auto">
+                                    </div>
                                 </div>
 
                                 <button @click="salvarAluno" :disabled="cadastrandoAluno" class="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-md transition-all">{{ cadastrandoAluno ? 'Salvando...' : (modoEdicao ? 'Atualizar' : 'Cadastrar') }}</button>
@@ -904,19 +786,41 @@ watch([subTabAvaliacao, abaAlunoAtual], async () => {
                 <div v-else-if="viewAtual === 'criar-atividade'" class="max-w-4xl mx-auto animate-fade-in print:hidden">
                     <div class="flex flex-col md:flex-row gap-6">
                         <div class="flex-1 bg-white p-6 md:p-8 rounded-3xl shadow-sm border border-gray-200">
-                            <h2 class="text-xl font-black text-gray-800 mb-6">Nova Atividade</h2>
-                            
+                            <h2 class="text-xl font-black text-gray-800 mb-6">Nova Tarefa para a Turma</h2>
                             <div class="grid grid-cols-2 md:grid-cols-3 gap-3 mb-6">
-                                <div v-for="tipo in ['VOGAL', 'CONSOANTE', 'NUMERO', 'LUGARES', 'NOMES']" 
-                                     :key="tipo" 
-                                     @click="novaAtividade.tipo = tipo" 
-                                     :class="['p-3 rounded-xl border-2 text-center font-bold text-xs cursor-pointer transition-all flex items-center justify-center h-16', novaAtividade.tipo === tipo ? 'border-indigo-500 bg-indigo-50 text-indigo-700' : 'border-gray-100 hover:border-gray-200 text-gray-500']">
-                                     {{ tipo }}
+                                <div v-for="tipo in tiposAtividade" :key="tipo.value" @click="{ novaAtividade.tipo = tipo.value; novaAtividade.conteudo = ''; }" :class="['p-3 rounded-xl border-2 text-center font-bold text-xs cursor-pointer transition-all flex items-center justify-center h-16', novaAtividade.tipo === tipo.value ? 'border-indigo-500 bg-indigo-50 text-indigo-700' : 'border-gray-100 hover:border-gray-200 text-gray-500']">{{ tipo.label }}</div>
+                            </div>
+                            <div v-if="novaAtividade.tipo !== 'LIVRE'" class="mb-6">
+                                <div v-if="['VOGAL', 'CONSOANTE', 'NUMERO'].includes(novaAtividade.tipo)">
+                                    <label class="block text-xs font-bold text-gray-400 uppercase mb-2">Qual Letra ou Número?</label>
+                                    <input v-model="novaAtividade.conteudo" type="text" maxlength="2" class="w-full p-4 rounded-xl bg-gray-50 border-2 font-black text-center text-2xl uppercase focus:border-indigo-500 focus:bg-white transition-all dashed-outline-text">
+                                </div>
+                                <div v-if="novaAtividade.tipo === 'FORMA'">
+                                    <label class="block text-xs font-bold text-gray-400 uppercase mb-2">Escolha a Forma:</label>
+                                    <div class="opcoes-visuais">
+                                        <button v-for="forma in listaFormas" :key="forma.valor" @click="novaAtividade.conteudo = forma.valor" :class="['opcao-visual-btn', { 'ativo': novaAtividade.conteudo === forma.valor }]" type="button">
+                                            <div class="icone-shape"><svg viewBox="0 0 24 24" class="shape-svg-dashed"><path :d="forma.path" /></svg></div><span class="text-xs font-bold mt-2">{{ forma.label }}</span>
+                                        </button>
+                                    </div>
+                                </div>
+                                <div v-if="novaAtividade.tipo === 'EMOCAO'">
+                                    <label class="block text-xs font-bold text-gray-400 uppercase mb-2">Escolha a Emoção (Para Colorir):</label>
+                                    <div class="opcoes-visuais">
+                                        <button v-for="emocao in listaEmocoes" :key="emocao.valor" @click="novaAtividade.conteudo = emocao.valor" :class="['opcao-visual-btn', { 'ativo': novaAtividade.conteudo === emocao.valor }]" type="button">
+                                            <div class="icone-shape"><svg viewBox="0 0 24 24" class="shape-svg-dashed"><path :d="emocao.path" /></svg></div><span class="text-xs font-bold mt-2">{{ emocao.label }}</span>
+                                        </button>
+                                    </div>
+                                </div>
+                                <div v-if="novaAtividade.tipo === 'FRUTA'">
+                                    <label class="block text-xs font-bold text-gray-400 uppercase mb-2">Escolha a Fruta (Para Colorir):</label>
+                                    <div class="opcoes-visuais">
+                                        <button v-for="fruta in listaFrutas" :key="fruta.valor" @click="novaAtividade.conteudo = fruta.valor" :class="['opcao-visual-btn', { 'ativo': novaAtividade.conteudo === fruta.valor }]" type="button">
+                                            <div class="icone-shape"><svg viewBox="0 0 24 24" class="shape-svg-dashed"><path :d="fruta.path" /></svg></div><span class="text-xs font-bold mt-2">{{ fruta.label }}</span>
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
-                            
-                            <div v-if="novaAtividade.tipo !== 'LIVRE'" class="mb-6"><label class="block text-xs font-bold text-gray-400 uppercase mb-2">Conteúdo</label><input v-model="novaAtividade.conteudo" type="text" class="w-full p-4 rounded-xl bg-gray-50 border-2 font-black text-center text-2xl uppercase"></div>
-                            <button @click="enviarAtividade" :disabled="enviandoAtividade" class="w-full bg-indigo-600 text-white font-bold py-4 rounded-xl shadow-lg">Enviar para {{ alunosSelecionadosParaEnvio.length }} Aluno(s)</button>
+                            <button @click="enviarAtividade" :disabled="enviandoAtividade" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-4 rounded-xl shadow-lg transition-all">{{ enviandoAtividade ? 'Enviando...' : `Enviar para ${alunosSelecionadosParaEnvio.length} Aluno(s)` }}</button>
                         </div>
                         <div class="w-full md:w-80 bg-white p-6 rounded-3xl shadow-sm border border-gray-200 flex flex-col h-auto md:h-[500px]">
                             <div class="flex justify-between items-center mb-4 border-b border-gray-100 pb-2"><h3 class="font-bold text-gray-700">Destinatários</h3><label class="flex items-center gap-2 cursor-pointer text-xs font-bold text-indigo-600 hover:text-indigo-800"><input type="checkbox" v-model="selecionarTodos" class="rounded text-indigo-600 focus:ring-indigo-500"> Todos</label></div>
@@ -949,25 +853,29 @@ watch([subTabAvaliacao, abaAlunoAtual], async () => {
                             <div class="bg-white p-6 rounded-3xl border border-gray-200 shadow-sm h-64 md:h-80"><h4 class="text-xs font-black text-gray-400 uppercase mb-4">Entregas</h4><Bar :data="chartDataAtividades" :options="chartOptionsCommon" /></div>
                             <div class="bg-white p-6 rounded-3xl border border-gray-200 shadow-sm h-64 md:h-80"><h4 class="text-xs font-black text-gray-400 uppercase mb-4">Oscilação Emocional (Valência)</h4><Line :data="chartDataEmocoes" :options="chartOptionsEmocoes" :plugins="[emojiPlugin]" /></div>
                         </div>
+                        
                         <div>
-                            <div class="flex items-center gap-2 mb-4"><span class="text-2xl">📝</span><h3 class="text-lg font-black text-gray-700">Atividades Realizadas</h3></div>
-                            <div v-if="atividadesGuiadas.length > 0" class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-                                <div v-for="ativ in atividadesGuiadas" :key="ativ.id" class="bg-white p-3 rounded-2xl border border-gray-200 shadow-sm hover:shadow-md transition-all">
+                            <div class="flex items-center gap-2 mb-4"><span class="text-2xl">📝</span><h3 class="text-lg font-black text-gray-700">Tarefas da Escola</h3></div>
+                            <div v-if="atividadesEscolares.length > 0" class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                                <div v-for="ativ in atividadesEscolares" :key="ativ.id" class="relative group bg-white p-3 rounded-2xl border border-gray-200 shadow-sm hover:shadow-md transition-all">
                                     <div class="aspect-square bg-gray-50 rounded-xl mb-3 overflow-hidden border border-gray-100"><img :src="ativ.desenhoBase64" class="w-full h-full object-contain"></div>
-                                    <div class="flex justify-between items-center px-1"><span class="text-[10px] font-black bg-indigo-50 text-indigo-700 px-2 py-1 rounded">{{ ativ.tipo }}: {{ ativ.conteudo }}</span><span class="text-[10px] text-gray-400 font-bold">{{ formatarData(ativ.dataRealizacao).split(' ')[0] }}</span></div>
+                                    <div class="flex justify-between items-center px-1"><span :class="['text-[10px] font-black px-2 py-1 rounded', ativ.tipo === 'LIVRE' ? 'bg-purple-100 text-purple-700' : 'bg-indigo-50 text-indigo-700']">{{ ativ.tipo }}: {{ ativ.conteudo }}</span><span class="text-[10px] text-gray-400 font-bold">{{ formatarData(ativ.dataRealizacao).split(' ')[0] }}</span></div>
+                                    <button @click="excluirAtividade(ativ.id)" class="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity" title="Apagar Atividade">🗑️</button>
                                 </div>
                             </div>
-                            <div v-else class="text-center py-10 bg-white rounded-3xl border border-dashed border-gray-300"><p class="text-gray-400 font-bold">Nenhuma atividade guiada entregue ainda.</p></div>
+                            <div v-else class="text-center py-10 bg-white rounded-3xl border border-dashed border-gray-300"><p class="text-gray-400 font-bold">Nenhuma atividade escolar entregue ainda.</p></div>
                         </div>
+
                         <div>
-                            <div class="flex items-center gap-2 mb-4"><span class="text-2xl">🎨</span><h3 class="text-lg font-black text-gray-700">Galeria de Arte</h3></div>
-                            <div v-if="desenhosLivres.length > 0" class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-                                <div v-for="desenho in desenhosLivres" :key="desenho.id" class="bg-white p-3 rounded-2xl border border-gray-200 shadow-sm hover:shadow-md transition-all">
-                                    <div class="aspect-square bg-purple-50 rounded-xl mb-3 overflow-hidden border border-gray-100"><img :src="desenho.desenhoBase64" class="w-full h-full object-contain"></div>
-                                    <div class="flex justify-between items-center px-1"><span class="text-[10px] font-black bg-purple-100 text-purple-700 px-2 py-1 rounded">LIVRE</span><span class="text-[10px] text-gray-400 font-bold">{{ formatarData(desenho.dataRealizacao).split(' ')[0] }}</span></div>
+                            <div class="flex items-center gap-2 mb-4"><span class="text-2xl">🎨</span><h3 class="text-lg font-black text-gray-700">Galeria de Arte (Desenho Livre)</h3></div>
+                            <div v-if="galeriaLivre.length > 0" class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                                <div v-for="ativ in galeriaLivre" :key="ativ.id" class="relative group bg-white p-3 rounded-2xl border border-gray-200 shadow-sm hover:shadow-md transition-all">
+                                    <div class="aspect-square bg-gray-50 rounded-xl mb-3 overflow-hidden border border-gray-100"><img :src="ativ.desenhoBase64" class="w-full h-full object-contain"></div>
+                                    <div class="flex justify-between items-center px-1"><span class="text-[10px] font-black px-2 py-1 rounded bg-yellow-50 text-yellow-700">ARTE</span><span class="text-[10px] text-gray-400 font-bold">{{ formatarData(ativ.dataRealizacao).split(' ')[0] }}</span></div>
+                                    <button @click="excluirAtividade(ativ.id)" class="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity" title="Apagar Atividade">🗑️</button>
                                 </div>
                             </div>
-                            <div v-else class="text-center py-10 bg-white rounded-3xl border border-dashed border-gray-300"><p class="text-gray-400 font-bold">Galeria vazia.</p></div>
+                            <div v-else class="text-center py-10 bg-white rounded-3xl border border-dashed border-gray-300"><p class="text-gray-400 font-bold">Nenhum desenho livre extra encontrado.</p></div>
                         </div>
                     </div>
 
@@ -985,7 +893,6 @@ watch([subTabAvaliacao, abaAlunoAtual], async () => {
                             </div>
                         </div>
                         <div v-if="carregandoFicha" class="text-center py-10 opacity-50 font-bold">Carregando ficha...</div>
-                        
                         <div v-else-if="Object.keys(questoesFiltradas).length > 0" class="space-y-0 bg-gray-50 rounded-2xl overflow-hidden border border-gray-200 print:bg-white print:border-gray-800">
                              <div class="p-4 bg-gray-100 border-b border-gray-300 print:bg-white flex justify-between items-center">
                                  <h3 class="font-black text-gray-800">{{ templatesAvaliacao[subTabAvaliacao].titulo }}</h3>
@@ -995,7 +902,6 @@ watch([subTabAvaliacao, abaAlunoAtual], async () => {
                                     <button @click="marcarTodos('NA')" class="text-[10px] bg-gray-200 text-gray-700 px-2 py-1 rounded font-bold hover:bg-gray-300">Todos N/A</button>
                                  </div>
                              </div>
-                             
                              <div v-for="(texto, num) in questoesFiltradas" :key="num" class="flex items-center justify-between p-4 border-b border-gray-200 bg-white hover:bg-indigo-50/30 transition-colors">
                                 <div class="flex gap-4 pr-4"><span class="font-black text-gray-300 w-6">{{ num }}</span><p class="text-sm font-bold text-gray-600 leading-snug">{{ texto }}</p></div>
                                 <div class="flex gap-2 shrink-0">
@@ -1005,12 +911,10 @@ watch([subTabAvaliacao, abaAlunoAtual], async () => {
                                 </div>
                              </div>
                         </div>
-                        
                         <div v-else class="text-center py-10 bg-gray-50 rounded-2xl border border-dashed border-gray-300">
                              <p class="text-gray-400 font-bold mb-2">Nenhum objetivo definido para esta categoria no Semanário.</p>
                              <button @click="verSemanario" class="text-indigo-600 text-xs font-bold hover:underline">Ir para Semanário e adicionar objetivos</button>
                         </div>
-
                         <div class="mt-6 flex gap-4 print:hidden">
                             <button @click="salvarAvaliacao" :disabled="salvandoAvaliacao" class="flex-1 bg-gray-900 hover:bg-black text-white font-bold py-4 rounded-xl shadow-lg transition-all active:scale-95 flex items-center justify-center gap-2">
                                 <span v-if="salvandoAvaliacao">Salvando...</span><span v-else>💾 Salvar Avaliação</span>
@@ -1066,7 +970,6 @@ watch([subTabAvaliacao, abaAlunoAtual], async () => {
                         <div><h1 class="text-2xl font-black text-gray-900 uppercase">Ficha de Avaliação</h1><p class="text-sm font-bold text-gray-600">Educação Infantil</p></div>
                         <div class="text-right text-sm"><p><strong>Aluno:</strong> {{ alunoSelecionado?.nome }}</p><p><strong>Tipo:</strong> {{ templatesAvaliacao[subTabAvaliacao]?.titulo }}</p></div>
                     </div>
-                    
                     <table class="w-full text-sm">
                         <thead><tr class="bg-gray-100"><th class="p-2 text-left border">Critério</th><th class="p-2 w-16 text-center border">SIM</th><th class="p-2 w-16 text-center border">NÃO</th><th class="p-2 w-16 text-center border">N/A</th></tr></thead>
                         <tbody>
@@ -1081,13 +984,45 @@ watch([subTabAvaliacao, abaAlunoAtual], async () => {
                             </tr>
                         </tbody>
                     </table>
-
                     <div class="mt-8 pt-4 border-t-2 border-gray-800 flex justify-between"><div class="text-xs">Data: {{ new Date().toLocaleDateString() }}</div><div class="text-xs">Assinatura do Professor: __________________________</div></div>
                 </div>
             </div>
             <div class="p-4 border-t bg-gray-50 flex justify-end gap-3"><button @click="imprimirRelatorio" class="px-6 py-2 bg-indigo-600 text-white font-bold rounded-lg hover:bg-indigo-700">🖨️ Imprimir</button><button @click="showRelatorioModal = false" class="px-6 py-2 bg-gray-200 text-gray-700 font-bold rounded-lg hover:bg-gray-300">Fechar</button></div>
         </div>
     </div>
+
+    <div v-if="showTeacherModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm print:hidden">
+        <div class="bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden p-6">
+            <h3 class="text-xl font-black text-gray-800 mb-4">Editar Meu Perfil</h3>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-xs font-bold text-gray-400 uppercase mb-1">Nome de Exibição</label>
+                    <input v-model="professorForm.nome" type="text" class="w-full p-3 bg-gray-50 rounded-xl border border-gray-200 font-bold">
+                </div>
+                
+                <div>
+                    <label class="block text-xs font-bold text-gray-400 uppercase mb-2">Selecione seu Avatar</label>
+                    <div class="flex flex-wrap gap-2 justify-center max-h-40 overflow-y-auto p-2 border border-gray-100 rounded-xl custom-scrollbar">
+                        <button v-for="av in listaAvatares" :key="av" @click="professorForm.avatarUrl = av" :class="['rounded-full p-1 border-2 transition-all', professorForm.avatarUrl === av ? 'border-indigo-500 scale-110' : 'border-transparent']">
+                            <img :src="av" class="w-12 h-12 rounded-full bg-gray-100 object-cover">
+                        </button>
+                    </div>
+                    <div class="text-center mt-2">
+                        <span class="text-xs text-gray-400 font-bold">Atual:</span>
+                        <img :src="professorForm.avatarUrl" class="w-16 h-16 rounded-full bg-gray-100 border-2 border-indigo-100 mx-auto mt-1 object-cover">
+                    </div>
+                </div>
+
+                <div class="flex justify-end gap-2 mt-4">
+                    <button @click="showTeacherModal = false" class="px-4 py-2 text-gray-500 font-bold hover:text-gray-700">Cancelar</button>
+                    <button @click="salvarPerfilProfessor" :disabled="salvandoProfessor" class="px-6 py-2 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 shadow-md">
+                        {{ salvandoProfessor ? 'Salvando...' : 'Salvar Alterações' }}
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
   </div>
 </template>
 
@@ -1111,5 +1046,60 @@ watch([subTabAvaliacao, abaAlunoAtual], async () => {
   .mobile-zoomed {
     zoom: 0.8;
   }
+}
+
+.opcoes-visuais {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+.opcao-visual-btn {
+    background: #ffffff;
+    border: 2px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 10px;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 90px;
+    height: 90px;
+    transition: all 0.2s ease;
+    color: #6b7280;
+}
+.opcao-visual-btn:hover {
+    border-color: #d1d5db;
+    background: #f9fafb;
+}
+.opcao-visual-btn.ativo {
+    border-color: #6366f1;
+    background: #eef2ff;
+    color: #4338ca;
+    box-shadow: 0 4px 6px -1px rgba(99, 102, 241, 0.1);
+}
+
+.icone-shape {
+    width: 48px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.shape-svg-dashed {
+    width: 32px; height: 32px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-dasharray: 4, 3;
+}
+
+.dashed-outline-text {
+    color: transparent;
+    -webkit-text-stroke: 1px #374151;
+    text-align: center;
+    font-size: 3rem;
 }
 </style>

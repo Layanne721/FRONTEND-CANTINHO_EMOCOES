@@ -100,7 +100,7 @@ async function validarPin() {
       <div class="mb-8">
         <div class="w-20 h-20 bg-[#F3E8FF] rounded-full flex items-center justify-center text-4xl mx-auto mb-4 shadow-sm text-[#A78BFA]">🔐</div>
         <h2 class="text-2xl font-black text-[#A78BFA] mb-1">Acesso Restrito</h2>
-        <p class="text-gray-400 font-bold text-sm">Área exclusiva para os pais.</p>
+        <p class="text-gray-400 font-bold text-sm">Área exclusiva para os Professores.</p>
       </div>
 
       <form @submit.prevent="validarPin" class="space-y-8">
