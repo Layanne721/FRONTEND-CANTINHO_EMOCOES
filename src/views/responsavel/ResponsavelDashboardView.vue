@@ -127,6 +127,7 @@ const salvandoDiario = ref(false);
 // Dashboard
 const filtroTempo = ref('semana');
 const dadosDashboard = ref(null);
+const registrosDiario = ref([]); // <--- CORREÇÃO: Variável que faltava
 const listaAtividades = ref([]);
 const carregandoDados = ref(false);
 const carregandoGeral = ref(false);
@@ -286,6 +287,8 @@ async function carregarDadosAluno(id) {
     try {
         const dashRes = await api.get(`/api/responsavel/dependentes/${id}/dashboard`);
         dadosDashboard.value = dashRes.data;
+        // --- CORREÇÃO: Populando a variável que faltava ---
+        registrosDiario.value = dashRes.data.ultimosRegistros || []; 
         
         const ativRes = await api.get(`/api/atividades/aluno/${id}`);
         listaAtividades.value = ativRes.data;
