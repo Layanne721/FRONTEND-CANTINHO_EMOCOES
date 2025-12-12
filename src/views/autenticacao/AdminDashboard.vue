@@ -1,6 +1,6 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue';
-import api from '@/services/api'; // <--- IMPORTAÇÃO
+import api from '@/services/api';
 import { useRouter } from 'vue-router';
 import { useAuthStore } from '@/stores/auth';
 
@@ -12,6 +12,11 @@ const loading = ref(true);
 const erro = ref(null);
 const deletandoId = ref(null);
 const termoPesquisa = ref('');
+
+// --- NOVAS VARIÁVEIS PARA BACKUP E RESTORE ---
+const fileInput = ref(null);
+const loadingBackup = ref(false);
+const loadingRestore = ref(false);
 
 onMounted(async () => {
   if (authStore.user?.perfil !== 'ADMINISTRADOR') {
@@ -25,7 +30,6 @@ async function carregarUsuarios() {
   loading.value = true;
   erro.value = null;
   try {
-    // Interceptor injeta o token automaticamente
     const response = await api.get('/api/admin/usuarios');
     usuarios.value = response.data;
   } catch (e) {
@@ -43,6 +47,77 @@ function fazerLogout() {
       authStore.user = null;
   }
   router.push('/login');
+}
+
+// --- FUNÇÃO: BAIXAR BACKUP ---
+async function baixarBackup() {
+    loadingBackup.value = true;
+    try {
+        // Solicita o arquivo como BLOB (binário)
+        const response = await api.get('/api/admin/backup', { responseType: 'blob' });
+        
+        // Cria URL temporária para download
+        const url = window.URL.createObjectURL(new Blob([response.data]));
+        const link = document.createElement('a');
+        link.href = url;
+        
+        // Formata data para o nome do arquivo
+        const date = new Date().toISOString().slice(0, 10);
+        link.setAttribute('download', `backup_cantinho_${date}.sql`);
+        
+        document.body.appendChild(link);
+        link.click();
+        
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+    } catch (e) {
+        console.error(e);
+        alert("Erro ao gerar backup. Verifique se o servidor possui as ferramentas de banco instaladas.");
+    } finally {
+        loadingBackup.value = false;
+    }
+}
+
+// --- FUNÇÕES: RESTAURAR BACKUP ---
+function acionarInputRestore() {
+    fileInput.value.click();
+}
+
+async function enviarRestore(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const confirmacao = confirm(
+        `⚠️ PERIGO CRÍTICO ⚠️\n\n` +
+        `Você está prestes a restaurar o banco de dados usando o arquivo:\n"${file.name}"\n\n` +
+        `Isso APAGARÁ TODOS os dados atuais e os substituirá pelos do backup.\n` +
+        `Deseja realmente continuar?`
+    );
+    
+    if (!confirmacao) {
+        event.target.value = ''; // Limpa o input se cancelar
+        return;
+    }
+
+    loadingRestore.value = true;
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+        await api.post('/api/admin/restore', formData, {
+            headers: {
+                'Content-Type': 'multipart/form-data'
+            }
+        });
+        alert("✅ Sucesso! O banco de dados foi restaurado. A página será recarregada.");
+        window.location.reload();
+    } catch (e) {
+        const msg = e.response?.data?.error || "Falha na restauração.";
+        alert("❌ Erro: " + msg);
+    } finally {
+        loadingRestore.value = false;
+        event.target.value = '';
+    }
 }
 
 async function excluirUsuario(usuario) {
@@ -126,9 +201,41 @@ function formatarData(data) {
           <p class="text-sm text-gray-400 font-bold">Gerenciamento de Professores e Alunos</p>
         </div>
         
-        <button @click="fazerLogout" class="px-6 py-2 bg-red-50 text-red-500 rounded-[20px] font-bold hover:bg-red-100 flex items-center gap-2 transition-all">
-          Sair <span class="text-lg">🚪</span>
-        </button>
+        <div class="flex items-center gap-3 flex-wrap justify-center">
+            
+            <input 
+                type="file" 
+                ref="fileInput" 
+                class="hidden" 
+                accept=".sql,.dum,.dump" 
+                @change="enviarRestore"
+            >
+
+            <button 
+                @click="baixarBackup" 
+                :disabled="loadingBackup"
+                class="px-5 py-2 bg-indigo-50 text-indigo-600 rounded-[20px] font-bold hover:bg-indigo-100 flex items-center gap-2 transition-all border border-indigo-100 disabled:opacity-50"
+            >
+                <span v-if="loadingBackup" class="animate-spin">⏳</span>
+                <span v-else>💾 Backup</span>
+            </button>
+
+            <button 
+                @click="acionarInputRestore" 
+                :disabled="loadingRestore"
+                class="px-5 py-2 bg-orange-50 text-orange-600 rounded-[20px] font-bold hover:bg-orange-100 flex items-center gap-2 transition-all border border-orange-100 disabled:opacity-50"
+                title="Restaurar Banco de Dados"
+            >
+                <span v-if="loadingRestore" class="animate-spin">🔄</span>
+                <span v-else>♻️ Restaurar</span>
+            </button>
+
+            <div class="h-8 w-[1px] bg-gray-200 mx-2 hidden md:block"></div>
+
+            <button @click="fazerLogout" class="px-6 py-2 bg-red-50 text-red-500 rounded-[20px] font-bold hover:bg-red-100 flex items-center gap-2 transition-all">
+              Sair <span class="text-lg">🚪</span>
+            </button>
+        </div>
       </header>
 
       <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
